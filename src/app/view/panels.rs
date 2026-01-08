@@ -14,7 +14,6 @@ use crate::app::{AppMessage, AppModel};
 /// Top header bar (global actions, toggles).
 pub fn header(_model: &AppModel) -> Element<'_, AppMessage> {
     let content = Row::new().spacing(8).align_y(Alignment::Center);
-    // In a real implementation, add more buttons/actions here.
 
     Container::new(content)
         .width(Length::Fill)
