@@ -14,8 +14,8 @@ use cosmic::app::{context_drawer, Core};
 use cosmic::cosmic_config::{self, CosmicConfigEntry};
 use cosmic::iced::keyboard::{self, key::Named, Key, Modifiers};
 use cosmic::iced::window;
-use cosmic::iced::{Length, Subscription};
-use cosmic::widget::{button, horizontal_space, icon, nav_bar};
+use cosmic::iced::Subscription;
+use cosmic::widget::nav_bar;
 use cosmic::{Action, Element, Task};
 
 pub use message::AppMessage;
@@ -145,19 +145,19 @@ impl cosmic::Application for Noctua {
         Task::none()
     }
 
-    fn header_start(&self) -> Vec<Element<Self::Message>> {
+    fn header_start(&self) -> Vec<Element<'_, Self::Message>> {
         view::header::header_start(&self.model)
     }
 
-    fn header_end(&self) -> Vec<Element<Self::Message>> {
+    fn header_end(&self) -> Vec<Element<'_, Self::Message>> {
         view::header::header_end(&self.model)
     }
 
-    fn view(&self) -> Element<Self::Message> {
+    fn view(&self) -> Element<'_, Self::Message> {
         view::view(&self.model)
     }
 
-    fn context_drawer(&self) -> Option<context_drawer::ContextDrawer<Self::Message>> {
+    fn context_drawer(&self) -> Option<context_drawer::ContextDrawer<'_, Self::Message>> {
         if !self.core.window.show_context {
             return None;
         }
@@ -171,7 +171,7 @@ impl cosmic::Application for Noctua {
         Some(&self.nav)
     }
 
-    fn footer(&self) -> Option<Element<Self::Message>> {
+    fn footer(&self) -> Option<Element<'_, Self::Message>> {
         Some(view::footer::view(&self.model))
     }
 

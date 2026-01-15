@@ -1,14 +1,14 @@
 //! Zoom and pan on an image.
 //! Forked from cosmic::iced to support external state control.
 
-use cosmic::iced::advanced::widget::{self, tree::{self, Tree}, Widget};
+use cosmic::iced::advanced::widget::{tree::{self, Tree}, Widget};
 use cosmic::iced::advanced::{
     Clipboard, Layout, Shell,
     layout, renderer, image as img_renderer,
 };
 use cosmic::iced::event::{self, Event};
 use cosmic::iced::mouse;
-use cosmic::iced::widget::image::{self, FilterMethod, Handle};
+use cosmic::iced::widget::image::{self, FilterMethod};
 use cosmic::iced::{
     ContentFit, Element, Length, Pixels, Point,
     Radians, Rectangle, Size, Vector,
