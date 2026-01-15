@@ -34,8 +34,8 @@ The footer shows your current position (e.g., "3 / 42").
 
 | Key       | Action                     | Description                                           |
 |:----------|:---------------------------|:------------------------------------------------------|
-| `+` / `=` | Zoom in                    | Increase zoom by 10%                                  |
-| `-`       | Zoom out                   | Decrease zoom by ~9%                                  |
+| `+` / `=` | Zoom in                    | Multiply zoom by 1.1 (increase by 10%)                |
+| `-`       | Zoom out                   | Divide zoom by 1.1 (decrease by ~9%, inverse of zoom in) |
 | `1`       | Actual size (100%)         | Display image at pixel-perfect 1:1 scale              |
 | `f`       | Fit to window              | Scale image to fit the window while preserving ratio  |
 
