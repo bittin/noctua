@@ -188,11 +188,6 @@ Full keyboard-driven workflow:
 - Scale/Resize tool (message prepared)
 - Basic color adjustments
 
-#### Batch Operations
-- Bulk transformations
-- Format conversion
-- Batch export
-
 #### Metadata Editing
 - EXIF data modification
 - Comment annotations
