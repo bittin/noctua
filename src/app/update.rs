@@ -37,6 +37,12 @@ pub fn update(model: &mut AppModel, msg: AppMessage) {
             model.view_mode = ViewMode::Fit;
             model.reset_pan();
         }
+        AppMessage::ViewerStateChanged { scale, offset_x, offset_y } => {
+            // Update model state from viewer (mouse interaction)
+            model.view_mode = ViewMode::Custom(scale);
+            model.pan_x = offset_x;
+            model.pan_y = offset_y;
+        }
 
         // ===== Pan control (Ctrl + arrow keys) ===========================================
         AppMessage::PanLeft => {

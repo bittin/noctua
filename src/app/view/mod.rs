@@ -6,6 +6,7 @@
 mod canvas;
 pub mod footer;
 pub mod header;
+mod image_viewer;
 pub mod panels;
 
 use cosmic::Element;

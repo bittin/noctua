@@ -37,6 +37,8 @@ pub enum AppMessage {
     ZoomReset,
     /// Fit document to window.
     ZoomFit,
+    /// Update zoom and pan from viewer (mouse interaction).
+    ViewerStateChanged { scale: f32, offset_x: f32, offset_y: f32 },
 
     // === Pan ===
     /// Pan image left.
