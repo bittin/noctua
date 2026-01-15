@@ -15,8 +15,13 @@ pub fn view(model: &AppModel) -> Element<'_, AppMessage> {
     // Zoom level display.
     let zoom_text = match model.view_mode {
         ViewMode::Fit => "Fit".to_string(),
-        ViewMode::ActualSize => "100%".to_string(),
-        ViewMode::Custom(z) => format!("{}%", (z * 100.0).round() as i32),
+        _ => {
+            if let Some(zoom) = model.zoom_factor() {
+                format!("{}%", (zoom * 100.0).round() as i32)
+            } else {
+                "Fit".to_string()
+            }
+        }
     };
 
     // Document dimensions (if available).
