@@ -34,8 +34,8 @@ The footer shows your current position (e.g., "3 / 42").
 
 | Key       | Action                     | Description                                           |
 |:----------|:---------------------------|:------------------------------------------------------|
-| `+` / `=` | Zoom in                    | Multiply zoom by 1.1 (increase by 10%)                |
-| `-`       | Zoom out                   | Divide zoom by 1.1 (decrease by ~9%, inverse of zoom in) |
+| `+` / `=` | Zoom in                    | Increase zoom by 10%                                  |
+| `-`       | Zoom out                   | Decrease zoom by ~9%                                  |
 | `1`       | Actual size (100%)         | Display image at pixel-perfect 1:1 scale              |
 | `f`       | Fit to window              | Scale image to fit the window while preserving ratio  |
 
@@ -131,7 +131,7 @@ Mouse and keyboard work together seamlessly:
 
 ## Configuration
 
-Settings are stored in `~/.config/noctua/config.toml`.
+Settings are stored in `~/.config/cosmic/org.codeberg.wfx.Noctua/v1/`.
 
 ### Configurable Options
 - **Default directory**: Set your preferred starting location
