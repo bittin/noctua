@@ -6,7 +6,7 @@ This document describes the implemented and planned features of Noctua, a modern
 
 ### Document Support
 
-#### Raster Images ✅
+#### Raster Images (Implemented)
 - **Formats**: PNG, JPEG, GIF, BMP, TIFF, WebP, and all formats supported by `image-rs`
 - **Capabilities**:
   - Full pixel-perfect rendering at 100% zoom
@@ -14,38 +14,38 @@ This document describes the implemented and planned features of Noctua, a modern
   - Real-time transformation preview
   - EXIF metadata extraction
 
-#### Vector Graphics ✅
+#### Vector Graphics (Implemented)
 - **Formats**: SVG
 - **Capabilities**:
   - High-quality rendering via `resvg`
   - Scalable display without quality loss
   - Metadata extraction
-  - ⚠️ Note: Transformations not yet implemented for vector documents
+  - Note: Transformations not yet implemented for vector documents
 
-#### Portable Documents ✅
+#### Portable Documents (Implemented)
 - **Formats**: PDF
 - **Capabilities**:
   - First page rendering
   - Basic transformations on rendered page
-  - ⚠️ Note: Multi-page navigation not yet implemented
+  - Note: Multi-page navigation not yet implemented
 
 ### Navigation
 
-#### Folder Navigation ✅
+#### Folder Navigation
 - **Automatic folder scanning**: When opening an image, all supported images in the same folder are indexed
 - **Quick navigation**:
   - Arrow keys (Left/Right) to navigate between images
   - Footer displays current position (e.g., "3 / 42")
   - Seamless transitions between images
 
-#### File Opening ✅
+#### File Opening
 - **Command-line arguments**: Open images directly from terminal
 - **Default directory**: Configurable starting location (defaults to XDG Pictures)
-- ⚠️ File dialog not yet implemented
+- File dialog not yet implemented
 
 ### View Controls
 
-#### Zoom ✅
+#### Zoom
 - **Mouse wheel**: Zoom in/out centered on cursor position
 - **Keyboard shortcuts**:
   - `+` or `=` - Zoom in
@@ -58,20 +58,20 @@ This document describes the implemented and planned features of Noctua, a modern
   - **Custom**: Any zoom level from 10% to 2000%
 - **Footer display**: Real-time zoom percentage or "Fit" indicator
 
-#### Pan ✅
+#### Pan
 - **Mouse drag**: Click and drag to pan around zoomed images
 - **Keyboard shortcuts**: `Ctrl + Arrow Keys` for precise panning
 - **Smart boundaries**: Pan is automatically limited to image boundaries
 - **Auto-center**: Images smaller than viewport are automatically centered
 
-#### Bidirectional State Sync ✅
+#### Bidirectional State Sync
 - Mouse interactions update keyboard/button controls
 - Keyboard/button controls update mouse interaction state
 - No conflicts between input methods
 
 ### Transformations
 
-#### Image Manipulation ✅
+#### Image Manipulation
 - **Rotate**:
   - `r` - Rotate 90° clockwise
   - `Shift + r` - Rotate 90° counter-clockwise
@@ -85,7 +85,7 @@ This document describes the implemented and planned features of Noctua, a modern
 
 ### User Interface
 
-#### COSMIC Integration ✅
+#### COSMIC Integration
 - **Native COSMIC design**: Follows COSMIC desktop design language
 - **Theme support**: Automatically adapts to system light/dark theme
 - **Header toolbar**:
@@ -99,15 +99,15 @@ This document describes the implemented and planned features of Noctua, a modern
   - Navigation position counter
 
 #### Panels
-- **Properties panel** ✅:
+- **Properties panel**:
   - Image metadata display
   - File information
   - Toggle with `i` key or toolbar button
 - **Navigation panel** (Left sidebar):
   - Toggle with `n` key or toolbar button
-  - ⚠️ Content not yet implemented
+  - Content not yet implemented
 
-#### Keyboard Shortcuts ✅
+#### Keyboard Shortcuts
 Full keyboard-driven workflow:
 - Navigation: `←` `→`
 - Zoom: `+` `-` `1` `f`
@@ -117,20 +117,20 @@ Full keyboard-driven workflow:
 
 ### Configuration
 
-#### Persistent Settings ✅
+#### Persistent Settings
 - **Panel states**: Remembers which panels were open
 - **Default directory**: Customizable starting location
 - **Settings location**: `~/.config/noctua/config.toml`
 
 ### Technical Features
 
-#### Architecture ✅
+#### Architecture
 - **Clean separation**: View layer agnostic to document format
 - **Polymorphic documents**: Single `DocumentContent` interface for all formats
 - **Efficient rendering**: Leverages COSMIC's iced renderer
 - **Type-safe transformations**: Compile-time guarantees for image operations
 
-#### Performance ✅
+#### Performance
 - **Lazy loading**: Images loaded on-demand
 - **Efficient folder scanning**: Fast directory traversal
 - **Minimal memory footprint**: Only active document kept in memory
@@ -140,25 +140,25 @@ Full keyboard-driven workflow:
 
 ### High Priority
 
-#### File Operations ⏳
+#### File Operations
 - File dialog integration (OpenPath message prepared)
 - Save transformed images
 - Copy/Move/Delete operations
 - Drag-and-drop support
 
-#### Multi-page Documents ⏳
+#### Multi-page Documents
 - PDF page navigation
 - Multi-page TIFF support
 - Page thumbnails
 
-#### Error Handling ⏳
+#### Error Handling
 - User-friendly error messages (ShowError/ClearError prepared)
 - Graceful handling of corrupted files
 - Recovery suggestions
 
 ### Medium Priority
 
-#### Vector Document Transformations ⏳
+#### Vector Document Transformations
 - Rotate SVG files
 - Flip SVG files
 - Transform preservation on save
@@ -192,10 +192,10 @@ Full keyboard-driven workflow:
 
 ## Feature Status Legend
 
-- ✅ **Implemented**: Fully functional and tested
-- ⏳ **Planned**: Design complete, implementation pending
-- ⚠️ **Partial**: Basic functionality exists, enhancements needed
-- 🔄 **In Progress**: Currently being developed
+- **Implemented**: Fully functional and tested
+- **Planned**: Design complete, implementation pending
+- **Partial**: Basic functionality exists, enhancements needed
+- **In Progress**: Currently being developed
 
 ## Contributing
 
