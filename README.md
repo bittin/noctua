@@ -19,7 +19,7 @@ A [justfile](./justfile) is included by default for the [casey/just][just] comma
 
 ## Documentation
 
-- [Keyboard Shortcuts](docs/usage.md)
+- [Usage](docs/usage.md)
 - [Features](docs/features.md)
 - [Development Guide](docs/development.md)
 
