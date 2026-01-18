@@ -14,8 +14,8 @@ When you open an image, Noctua automatically scans the folder and indexes all su
 
 ### Supported Formats
 - **Raster Images**: PNG, JPEG, GIF, BMP, TIFF, WebP, and all formats supported by `image-rs`
-- **Vector Graphics**: SVG (planned, not yet implemented)
-- **Portable Documents**: PDF (planned, not yet implemented)
+- **Vector Graphics**: SVG (with scalable rendering)
+- **Portable Documents**: PDF (with multi-page navigation and thumbnails)
 
 ## Keyboard Shortcuts
 
@@ -29,6 +29,10 @@ All keyboard shortcuts are case-insensitive unless otherwise noted.
 | `→`   | Next image        | Navigate to the next image in the folder       |
 
 The footer shows your current position (e.g., "3 / 42").
+
+For multi-page documents (PDF):
+- Click thumbnails in the left sidebar to jump to a specific page
+- Use `←` `→` to navigate between pages
 
 ### Zoom and View
 
@@ -75,6 +79,9 @@ All transformations are lossless and show in real-time.
 | `i` | Toggle properties      | Show/hide the properties panel (metadata)|
 | `n` | Toggle navigation      | Show/hide the navigation sidebar         |
 
+For multi-page documents (PDF), the navigation sidebar displays page thumbnails.
+Click on a thumbnail to jump to that page.
+
 ### Actions
 
 | Key | Action                 | Description                              |
@@ -101,6 +108,8 @@ The header toolbar provides quick access to common operations:
 ### Left Side
 - **Navigation toggle**: Show/hide the sidebar
 - **Previous/Next buttons**: Navigate between images in the folder
+
+### Center (Horizontally Centered)
 - **Rotate buttons**: Rotate clockwise or counter-clockwise
 - **Flip buttons**: Flip horizontally or vertically
 
@@ -133,6 +142,8 @@ The footer displays useful information:
 - **Zoom controls**: Zoom out, current zoom level, zoom in, fit buttons
 - **Image dimensions**: Width × Height in pixels
 - **Navigation position**: Current image / Total images in folder
+
+For PDFs, it also shows the current page number.
 
 ## Tips and Tricks
 
@@ -173,8 +184,7 @@ The following features are prepared in code but not yet implemented:
 - (Copy/Move/)Delete operations
 
 ### Document Support
-- SVG rendering with `resvg`
-- PDF rendering with multi-page support
+- SVG rendering (implemented)
 
 ### Advanced Editing
 - Crop mode (`c` key prepared)

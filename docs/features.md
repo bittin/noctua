@@ -14,22 +14,19 @@ This document describes the implemented and planned features of Noctua, a modern
   - Real-time transformation preview
   - EXIF metadata extraction
 
-#### Vector Graphics (Planned)
+#### Vector Graphics (Implemented)
 - **Formats**: SVG
-- **Status**: Code structure prepared, but rendering not yet implemented
-- **Planned capabilities**:
-  - High-quality rendering via `resvg`
-  - Scalable display without quality loss
-  - Metadata extraction
+- **Rendering**: High-quality rendering via `resvg` library
+- **Capabilities**:
+  - Scalable display at any zoom level without quality loss
   - Transformations (rotate, flip)
 
-#### Portable Documents (Planned)
+#### Portable Documents (Implemented)
 - **Formats**: PDF
-- **Status**: Code structure prepared, but rendering not yet implemented
-- **Planned capabilities**:
-  - First page rendering
-  - Multi-page navigation
-  - Basic transformations on rendered pages
+- **Rendering**: Full PDF rendering via poppler library
+- **Multi-page navigation**: Browse through all pages of a document
+- **Page thumbnails**: Left sidebar shows page previews (generated on demand)
+- **Transformations**: Rotate and flip on rendered pages
 
 ### Navigation
 
@@ -91,9 +88,9 @@ This document describes the implemented and planned features of Noctua, a modern
 - **Native COSMIC design**: Follows COSMIC desktop design language
 - **Theme support**: Automatically adapts to system light/dark theme
 - **Header toolbar**:
-  - Navigation controls (Previous/Next)
-  - Transformation buttons (Rotate, Flip)
-  - Information panel toggle
+  - Left: Navigation controls (Previous/Next) and panel toggle
+  - Center: Transformation buttons (Rotate, Flip) - horizontally centered
+  - Right: Information panel toggle
 - **Footer bar**:
   - Zoom controls with buttons
   - Current zoom level display
@@ -111,7 +108,8 @@ This document describes the implemented and planned features of Noctua, a modern
   - Toggle with `i` key or toolbar button
 - **Navigation panel** (Left sidebar):
   - Toggle with `n` key or toolbar button
-  - Content not yet implemented
+  - For multi-page documents (PDF): Shows page thumbnails
+  - Click to navigate to specific page
 
 #### Keyboard Shortcuts (Implemented)
 Full keyboard-driven workflow:
@@ -163,18 +161,6 @@ Full keyboard-driven workflow:
 
 ### High Priority
 
-#### SVG Support
-- Implement proper SVG parsing and rendering
-- Integration with `resvg` library
-- Scalable vector display
-- Transformation support
-
-#### PDF Support
-- Implement PDF rendering backend
-- First page display
-- Multi-page navigation
-- Page thumbnails
-
 #### File Operations
 - File dialog integration (OpenPath message prepared)
 - Save transformed images
@@ -184,8 +170,8 @@ Full keyboard-driven workflow:
 ### Medium Priority
 
 #### Multi-format TIFF Support
-- Multi-page TIFF navigation
-- Page thumbnails
+- Multi-page TIFF navigation (infrastructure ready)
+- Page thumbnails for TIFF (same as PDF)
 
 #### Metadata Editing
 - EXIF data modification
@@ -200,7 +186,6 @@ Full keyboard-driven workflow:
 - Basic color adjustments (brightness, contrast)
 
 #### Enhanced Navigation
-- Thumbnail strip
 - Grid view for folder contents
 - Quick jump to file
 
