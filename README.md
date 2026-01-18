@@ -17,6 +17,27 @@ A [justfile](./justfile) is included by default for the [casey/just][just] comma
 - `just check` runs clippy on the project to check for linter warnings
 - `just check-json` can be used by IDEs that support LSP
 
+### Dependencies
+#### Arch Linux
+```bash
+sudo pacman -S poppler-glib
+```
+
+#### Debian/Ubuntu
+```bash
+sudo apt install libpoppler-glib-dev
+```
+
+#### Fedora
+```bash
+sudo dnf install poppler-glib-devel
+```
+
+#### OpenSUSE
+```bash
+sudo zypper install poppler-glib-devel
+```
+
 ## Documentation
 
 - [Usage](docs/usage.md)

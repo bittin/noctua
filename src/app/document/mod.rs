@@ -3,22 +3,57 @@
 //
 // Document module root: common enums and type erasure for document kinds.
 
+pub mod cache;
 pub mod file;
 pub mod meta;
 pub mod portable;
 pub mod raster;
-pub mod transform;
 pub mod utils;
 pub mod vector;
 
-use cosmic::iced::widget::image as iced_image;
 use cosmic::iced_renderer::graphics::image::image_rs::ImageFormat as CosmicImageFormat;
+use image::GenericImageView;
 use std::fmt;
 use std::path::Path;
 
 use self::portable::PortableDocument;
 use self::raster::RasterDocument;
 use self::vector::VectorDocument;
+
+/// Trait for documents that support multiple pages (PDF, multi-page TIFF, etc.).
+pub trait MultiPage {
+    /// Total number of pages in the document.
+    fn page_count(&self) -> u32;
+
+    /// Current page index (0-based).
+    fn current_page(&self) -> u32;
+
+    /// Navigate to a specific page.
+    fn goto_page(&mut self, page: u32) -> anyhow::Result<()>;
+
+    /// Check if thumbnails are ready for display.
+    fn thumbnails_ready(&self) -> bool;
+
+    /// Generate thumbnails (uses disk cache when available).
+    fn generate_thumbnails(&mut self);
+
+    /// Get cached thumbnail handle for a specific page.
+    fn get_thumbnail(&self, page: u32) -> Option<ImageHandle>;
+}
+
+/// Re-export the image handle type for use by submodules.
+pub type ImageHandle = cosmic::iced::widget::image::Handle;
+
+/// Create an iced image handle from a DynamicImage.
+///
+/// This is the central function for converting rendered images to display handles.
+/// Used by raster, vector, and portable document types.
+pub fn create_image_handle(img: &image::DynamicImage) -> ImageHandle {
+    let (w, h) = img.dimensions();
+    let rgba = img.to_rgba8();
+    let pixels = rgba.into_raw();
+    ImageHandle::from_rgba(w, h, pixels)
+}
 
 /// High-level classification of documents.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -79,9 +114,9 @@ impl DocumentContent {
     /// Returns a cloneable image handle for rendering.
     ///
     /// This is intentionally linear: every concrete document type
-    /// owns some kind of `iced_image::Handle`, and the canvas can
+    /// owns some kind of `ImageHandle`, and the canvas can
     /// just call `doc.handle()` without additional branching.
-    pub fn handle(&self) -> iced_image::Handle {
+    pub fn handle(&self) -> ImageHandle {
         match self {
             DocumentContent::Raster(doc) => doc.handle.clone(),
             DocumentContent::Vector(doc) => doc.handle.clone(),
@@ -101,44 +136,136 @@ impl DocumentContent {
         }
     }
     /// Extract metadata from the document.
-    /// This may involve file I/O for EXIF data, so call lazily.
-    pub fn extract_meta(&self) -> meta::DocumentMeta {
+    /// Requires the file path for file size and EXIF extraction.
+    pub fn extract_meta(&self, path: &Path) -> meta::DocumentMeta {
         match self {
-            DocumentContent::Raster(doc) => doc.extract_meta(),
-            DocumentContent::Vector(doc) => doc.extract_meta(),
-            DocumentContent::Portable(doc) => doc.extract_meta(),
+            DocumentContent::Raster(doc) => doc.extract_meta(path),
+            DocumentContent::Vector(doc) => doc.extract_meta(path),
+            DocumentContent::Portable(doc) => doc.extract_meta(path),
+        }
+    }
+
+    /// Rotate document 90 degrees clockwise.
+    pub fn rotate_cw(&mut self) {
+        match self {
+            DocumentContent::Raster(doc) => doc.rotate_cw(),
+            DocumentContent::Vector(doc) => doc.rotate_cw(),
+            DocumentContent::Portable(doc) => doc.rotate_cw(),
+        }
+    }
+
+    /// Rotate document 90 degrees counter-clockwise.
+    pub fn rotate_ccw(&mut self) {
+        match self {
+            DocumentContent::Raster(doc) => doc.rotate_ccw(),
+            DocumentContent::Vector(doc) => doc.rotate_ccw(),
+            DocumentContent::Portable(doc) => doc.rotate_ccw(),
+        }
+    }
+
+    /// Flip document horizontally.
+    pub fn flip_horizontal(&mut self) {
+        match self {
+            DocumentContent::Raster(doc) => doc.flip_horizontal(),
+            DocumentContent::Vector(doc) => doc.flip_horizontal(),
+            DocumentContent::Portable(doc) => doc.flip_horizontal(),
+        }
+    }
+
+    /// Flip document vertically.
+    pub fn flip_vertical(&mut self) {
+        match self {
+            DocumentContent::Raster(doc) => doc.flip_vertical(),
+            DocumentContent::Vector(doc) => doc.flip_vertical(),
+            DocumentContent::Portable(doc) => doc.flip_vertical(),
+        }
+    }
+
+    /// Check if this document supports multiple pages.
+    pub fn is_multi_page(&self) -> bool {
+        match self {
+            DocumentContent::Portable(doc) => doc.page_count() > 1,
+            // TODO: RasterDocument for multi-page TIFF
+            _ => false,
+        }
+    }
+
+    /// Get page count if this is a multi-page document.
+    pub fn page_count(&self) -> Option<u32> {
+        match self {
+            DocumentContent::Portable(doc) => Some(doc.page_count()),
+            // TODO: RasterDocument for multi-page TIFF
+            _ => None,
+        }
+    }
+
+    /// Get current page index if this is a multi-page document.
+    pub fn current_page(&self) -> Option<u32> {
+        match self {
+            DocumentContent::Portable(doc) => Some(doc.current_page()),
+            // TODO: RasterDocument for multi-page TIFF
+            _ => None,
+        }
+    }
+
+    /// Navigate to a specific page if this is a multi-page document.
+    pub fn goto_page(&mut self, page: u32) -> anyhow::Result<()> {
+        match self {
+            DocumentContent::Portable(doc) => doc.goto_page(page),
+            // TODO: RasterDocument for multi-page TIFF
+            _ => Err(anyhow::anyhow!("Document does not support multiple pages")),
+        }
+    }
+
+    /// Get cached thumbnail handle for a specific page.
+    pub fn get_thumbnail(&self, page: u32) -> Option<ImageHandle> {
+        match self {
+            DocumentContent::Portable(doc) => doc.get_thumbnail(page),
+            // TODO: RasterDocument for multi-page TIFF
+            _ => None,
+        }
+    }
+
+    /// Check if thumbnails are ready for display.
+    pub fn thumbnails_ready(&self) -> bool {
+        match self {
+            DocumentContent::Portable(doc) => doc.thumbnails_ready(),
+            // TODO: RasterDocument for multi-page TIFF
+            _ => false,
+        }
+    }
+
+    /// Get number of thumbnails currently loaded.
+    pub fn thumbnails_loaded(&self) -> u32 {
+        match self {
+            DocumentContent::Portable(doc) => doc.thumbnails_loaded(),
+            // TODO: RasterDocument for multi-page TIFF
+            _ => 0,
+        }
+    }
+
+    /// Generate a single thumbnail page. Returns next page to generate, or None if done.
+    pub fn generate_thumbnail_page(&mut self, page: u32) -> Option<u32> {
+        match self {
+            DocumentContent::Portable(doc) => doc.generate_thumbnail_page(page),
+            // TODO: RasterDocument for multi-page TIFF
+            _ => None,
+        }
+    }
+
+    /// Generate all thumbnails at once (blocking).
+    pub fn generate_thumbnails(&mut self) {
+        match self {
+            DocumentContent::Portable(doc) => doc.generate_thumbnails(),
+            // TODO: RasterDocument for multi-page TIFF
+            _ => {}
         }
     }
 }
 
 /// Set an image file as desktop wallpaper.
 ///
-/// This function attempts multiple methods in order:
-/// 1. COSMIC Desktop (direct config file modification)
-/// 2. wallpaper crate (KDE, XFCE, Windows, macOS)
-/// 3. gsettings (GNOME)
-/// 4. feh (tiling window managers)
-///
-/// The operation is performed asynchronously and logs success/failure.
+/// Delegates to `utils::set_as_wallpaper` which tries multiple methods.
 pub fn set_as_wallpaper(path: &Path) {
-    // Canonicalize to absolute path
-    let abs_path = match path.canonicalize() {
-        Ok(p) => p,
-        Err(e) => {
-            log::error!("Failed to canonicalize path {}: {}", path.display(), e);
-            return;
-        }
-    };
-
-    // Convert to string
-    let path_str = match abs_path.to_str() {
-        Some(s) => s.to_string(),
-        None => {
-            log::error!("Invalid UTF-8 in path: {}", abs_path.display());
-            return;
-        }
-    };
-
-    // Delegate to utils with concrete string type
-    utils::set_as_wallpaper(&path_str);
+    utils::set_as_wallpaper(path);
 }

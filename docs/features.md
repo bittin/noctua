@@ -181,16 +181,23 @@ Full keyboard-driven workflow:
 - Copy/Move/Delete operations
 - Drag-and-drop support
 
-#### Error Handling
-- User-friendly error messages (ShowError/ClearError prepared)
-- Graceful handling of corrupted files
-- Recovery suggestions
-
 ### Medium Priority
 
 #### Multi-format TIFF Support
 - Multi-page TIFF navigation
 - Page thumbnails
+
+#### Metadata Editing
+- EXIF data modification
+- Comment annotations
+- Tag management
+
+### Low Priority
+
+#### Advanced Editing
+- Crop tool (message prepared)
+- Scale/Resize tool (message prepared)
+- Basic color adjustments (brightness, contrast)
 
 #### Enhanced Navigation
 - Thumbnail strip
@@ -201,18 +208,6 @@ Full keyboard-driven workflow:
 - Auto-advance timer
 - Configurable intervals
 - Fullscreen support
-
-### Low Priority
-
-#### Advanced Editing
-- Crop tool (message prepared)
-- Scale/Resize tool (message prepared)
-- Basic color adjustments
-
-#### Metadata Editing
-- EXIF data modification
-- Comment annotations
-- Tag management
 
 ## Feature Status Legend
 

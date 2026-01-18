@@ -1,18 +1,21 @@
-//! Zoom and pan on an image.
-//! Forked from cosmic::iced to support external state control.
+// SPDX-License-Identifier: GPL-3.0-or-later
+// src/app/view/image_viewer.rs
+//
+// Zoom and pan image viewer widget with external state control.
+// Forked from cosmic::iced to support external state control.
 
-use cosmic::iced::advanced::widget::{tree::{self, Tree}, Widget};
-use cosmic::iced::advanced::{
-    Clipboard, Layout, Shell,
-    layout, renderer, image as img_renderer,
-};
+use cosmic::iced::advanced::image as img_renderer;
+use cosmic::iced::advanced::layout;
+use cosmic::iced::advanced::renderer;
+use cosmic::iced::advanced::widget::tree::{self, Tree};
+use cosmic::iced::advanced::widget::Widget;
+use cosmic::iced::advanced::{Clipboard, Layout, Shell};
 use cosmic::iced::event::{self, Event};
 use cosmic::iced::mouse;
-use cosmic::iced::widget::image::{self, FilterMethod};
-use cosmic::iced::{
-    ContentFit, Element, Length, Pixels, Point,
-    Radians, Rectangle, Size, Vector,
-};
+use cosmic::iced::widget::image::FilterMethod;
+use cosmic::iced::{ContentFit, Element, Length, Pixels, Point, Radians, Rectangle, Size, Vector};
+
+use crate::constant::{OFFSET_EPSILON, SCALE_EPSILON};
 
 /// A frame that displays an image with the ability to zoom in/out and pan.
 #[allow(missing_debug_implementations)]
@@ -26,14 +29,14 @@ pub struct Viewer<Handle, Message> {
     handle: Handle,
     filter_method: FilterMethod,
     content_fit: ContentFit,
-    /// Optional external state to override internal state
-    external_state: Option<(f32, Vector)>,  // (scale, offset)
+    /// Optional external state to override internal state (scale, offset)
+    external_state: Option<(f32, Vector)>,
     /// Optional callback to notify state changes
     on_state_change: Option<Box<dyn Fn(f32, f32, f32) -> Message>>,
 }
 
 impl<Handle, Message> Viewer<Handle, Message> {
-    /// Creates a new [`Viewer`] with the given [`State`].
+    /// Creates a new [`Viewer`] with the given handle.
     pub fn new<T: Into<Handle>>(handle: T) -> Self {
         Viewer {
             handle: handle.into(),
@@ -67,7 +70,7 @@ impl<Handle, Message> Viewer<Handle, Message> {
     }
 
     /// Sets the [`FilterMethod`] of the [`Viewer`].
-    pub fn filter_method(mut self, filter_method: image::FilterMethod) -> Self {
+    pub fn filter_method(mut self, filter_method: FilterMethod) -> Self {
         self.filter_method = filter_method;
         self
     }
@@ -122,8 +125,7 @@ impl<Handle, Message> Viewer<Handle, Message> {
     }
 }
 
-impl<Message, Theme, Renderer, Handle> Widget<Message, Theme, Renderer>
-    for Viewer<Handle, Message>
+impl<Message, Theme, Renderer, Handle> Widget<Message, Theme, Renderer> for Viewer<Handle, Message>
 where
     Renderer: img_renderer::Renderer<Handle = Handle>,
     Handle: Clone,
@@ -135,7 +137,7 @@ where
 
     fn state(&self) -> tree::State {
         let mut state = State::new();
-        // Apply external state if provided
+        // Apply external state if provided at creation
         if let Some((scale, offset)) = self.external_state {
             state.scale = scale;
             state.current_offset = offset;
@@ -145,21 +147,21 @@ where
     }
 
     fn diff(&mut self, tree: &mut Tree) {
-        // Only update state if external state changed and user is not interacting
-        if let Some((scale, offset)) = self.external_state {
+        // Sync external state into internal state when user is not dragging
+        if let Some((ext_scale, ext_offset)) = self.external_state {
             let state = tree.state.downcast_mut::<State>();
 
             // Only apply external state if user is not currently dragging
             if !state.is_cursor_grabbed() {
-                // Check if external state differs from current state
-                let scale_changed = (state.scale - scale).abs() > 0.001;
-                let offset_changed = (state.current_offset.x - offset.x).abs() > 0.1
-                    || (state.current_offset.y - offset.y).abs() > 0.1;
+                // Check if external state differs significantly from current state
+                let scale_changed = (state.scale - ext_scale).abs() > SCALE_EPSILON;
+                let offset_changed = (state.current_offset.x - ext_offset.x).abs() > OFFSET_EPSILON
+                    || (state.current_offset.y - ext_offset.y).abs() > OFFSET_EPSILON;
 
                 if scale_changed || offset_changed {
-                    state.scale = scale;
-                    state.current_offset = offset;
-                    state.starting_offset = offset;
+                    state.scale = ext_scale;
+                    state.current_offset = ext_offset;
+                    state.starting_offset = ext_offset;
                 }
             }
         }
@@ -178,18 +180,12 @@ where
         renderer: &Renderer,
         limits: &layout::Limits,
     ) -> layout::Node {
-        // The raw w/h of the underlying image
         let image_size = renderer.measure_image(&self.handle);
-        let image_size =
-            Size::new(image_size.width as f32, image_size.height as f32);
+        let image_size = Size::new(image_size.width as f32, image_size.height as f32);
 
-        // The size to be available to the widget prior to `Shrink`ing
         let raw_size = limits.resolve(self.width, self.height, image_size);
-
-        // The uncropped size of the image when fit to the bounds above
         let full_size = self.content_fit.fit(image_size, raw_size);
 
-        // Shrink the widget to fit the resized image, if requested
         let final_size = Size {
             width: match self.width {
                 Length::Shrink => f32::min(raw_size.width, full_size.width),
@@ -224,8 +220,7 @@ where
                 };
 
                 match delta {
-                    mouse::ScrollDelta::Lines { y, .. }
-                    | mouse::ScrollDelta::Pixels { y, .. } => {
+                    mouse::ScrollDelta::Lines { y, .. } | mouse::ScrollDelta::Pixels { y, .. } => {
                         let state = tree.state.downcast_mut::<State>();
                         let previous_scale = state.scale;
 
@@ -239,6 +234,22 @@ where
                             })
                             .clamp(self.min_scale, self.max_scale);
 
+                            let scale_factor = state.scale / previous_scale;
+
+                            // Cursor position relative to the image center (not bounds center)
+                            // The image is centered in bounds, so bounds.center() is correct
+                            let cursor_to_center = cursor_position - bounds.center();
+
+                            // Transform offset so the point under cursor stays stationary
+                            // Formula: new_offset = old_offset * scale_factor + cursor_to_center * (scale_factor - 1)
+                            let new_offset = Vector::new(
+                                state.current_offset.x * scale_factor
+                                    + cursor_to_center.x * (scale_factor - 1.0),
+                                state.current_offset.y * scale_factor
+                                    + cursor_to_center.y * (scale_factor - 1.0),
+                            );
+
+                            // Clamp offset to valid range
                             let scaled_size = scaled_image_size(
                                 renderer,
                                 &self.handle,
@@ -247,26 +258,8 @@ where
                                 self.content_fit,
                             );
 
-                            let factor = state.scale / previous_scale - 1.0;
-
-                            let cursor_to_center =
-                                cursor_position - bounds.center();
-
-                            let adjustment = cursor_to_center * factor
-                                + state.current_offset * factor;
-
-                            state.current_offset = Vector::new(
-                                if scaled_size.width > bounds.width {
-                                    state.current_offset.x + adjustment.x
-                                } else {
-                                    0.0
-                                },
-                                if scaled_size.height > bounds.height {
-                                    state.current_offset.y + adjustment.y
-                                } else {
-                                    0.0
-                                },
-                            );
+                            state.current_offset =
+                                clamp_offset(new_offset, bounds.size(), scaled_size);
 
                             // Notify state change
                             if let Some(ref on_change) = self.on_state_change {
@@ -288,7 +281,6 @@ where
                 };
 
                 let state = tree.state.downcast_mut::<State>();
-
                 state.cursor_grabbed_at = Some(cursor_position);
                 state.starting_offset = state.current_offset;
 
@@ -299,6 +291,15 @@ where
 
                 if state.cursor_grabbed_at.is_some() {
                     state.cursor_grabbed_at = None;
+
+                    // Notify final state after drag ends
+                    if let Some(ref on_change) = self.on_state_change {
+                        shell.publish(on_change(
+                            state.scale,
+                            state.current_offset.x,
+                            state.current_offset.y,
+                        ));
+                    }
 
                     event::Status::Captured
                 } else {
@@ -316,34 +317,18 @@ where
                         bounds.size(),
                         self.content_fit,
                     );
-                    let hidden_width = (scaled_size.width - bounds.width / 2.0)
-                        .max(0.0)
-                        .round();
-
-                    let hidden_height = (scaled_size.height
-                        - bounds.height / 2.0)
-                        .max(0.0)
-                        .round();
 
                     let delta = position - origin;
 
-                    let x = if bounds.width < scaled_size.width {
-                        (state.starting_offset.x - delta.x)
-                            .clamp(-hidden_width, hidden_width)
-                    } else {
-                        0.0
-                    };
+                    // Pan: subtract delta from starting offset
+                    let new_offset = Vector::new(
+                        state.starting_offset.x - delta.x,
+                        state.starting_offset.y - delta.y,
+                    );
 
-                    let y = if bounds.height < scaled_size.height {
-                        (state.starting_offset.y - delta.y)
-                            .clamp(-hidden_height, hidden_height)
-                    } else {
-                        0.0
-                    };
+                    state.current_offset = clamp_offset(new_offset, bounds.size(), scaled_size);
 
-                    state.current_offset = Vector::new(x, y);
-
-                    // Notify state change on pan
+                    // Notify state change during pan
                     if let Some(ref on_change) = self.on_state_change {
                         shell.publish(on_change(
                             state.scale,
@@ -395,7 +380,7 @@ where
         let state = tree.state.downcast_ref::<State>();
         let bounds = layout.bounds();
 
-        let final_size = scaled_image_size(
+        let scaled_size = scaled_image_size(
             renderer,
             &self.handle,
             state,
@@ -403,21 +388,23 @@ where
             self.content_fit,
         );
 
+        // Calculate translation to center the image and apply offset
         let translation = {
-            let diff_w = bounds.width - final_size.width;
-            let diff_h = bounds.height - final_size.height;
+            // How much space is left after placing the scaled image
+            let diff_w = bounds.width - scaled_size.width;
+            let diff_h = bounds.height - scaled_size.height;
 
-            let image_top_left = match self.content_fit {
-                ContentFit::None => {
-                    Vector::new(diff_w.max(0.0) / 2.0, diff_h.max(0.0) / 2.0)
-                }
-                _ => Vector::new(diff_w / 2.0, diff_h / 2.0),
-            };
+            // Base position: center the image in the viewport
+            // For images smaller than viewport: center them (diff > 0)
+            // For images larger than viewport: they extend beyond bounds (diff < 0)
+            let center_offset = Vector::new(diff_w / 2.0, diff_h / 2.0);
 
-            image_top_left - state.offset(bounds, final_size)
+            // Apply pan offset (offset moves the "camera", so subtract it)
+            // Positive offset = looking at right/bottom part = image moves left/up
+            center_offset - state.current_offset
         };
 
-        let drawing_bounds = Rectangle::new(bounds.position(), final_size);
+        let drawing_bounds = Rectangle::new(bounds.position(), scaled_size);
 
         let render = |renderer: &mut Renderer| {
             renderer.with_translation(translation, |renderer| {
@@ -462,25 +449,29 @@ impl State {
         State::default()
     }
 
-    /// Returns the current offset of the [`State`], given the bounds
-    /// of the [`Viewer`] and its image.
-    fn offset(&self, bounds: Rectangle, image_size: Size) -> Vector {
-        let hidden_width =
-            (image_size.width - bounds.width / 2.0).max(0.0).round();
-
-        let hidden_height =
-            (image_size.height - bounds.height / 2.0).max(0.0).round();
-
-        Vector::new(
-            self.current_offset.x.clamp(-hidden_width, hidden_width),
-            self.current_offset.y.clamp(-hidden_height, hidden_height),
-        )
-    }
-
     /// Returns if the cursor is currently grabbed by the [`Viewer`].
     pub fn is_cursor_grabbed(&self) -> bool {
         self.cursor_grabbed_at.is_some()
     }
+}
+
+/// Clamps the offset to keep the image within reasonable bounds.
+///
+/// The offset represents how far the viewport's center is displaced from the image's center.
+/// - offset (0, 0) = image centered
+/// - positive offset = viewing right/bottom part of image
+/// - negative offset = viewing left/top part of image
+fn clamp_offset(offset: Vector, viewport_size: Size, image_size: Size) -> Vector {
+    // Maximum allowed offset in each direction
+    // When image is larger than viewport, allow panning up to image edge
+    // When image is smaller than viewport, no panning needed (clamp to 0)
+    let max_offset_x = ((image_size.width - viewport_size.width) / 2.0).max(0.0);
+    let max_offset_y = ((image_size.height - viewport_size.height) / 2.0).max(0.0);
+
+    Vector::new(
+        offset.x.clamp(-max_offset_x, max_offset_x),
+        offset.y.clamp(-max_offset_y, max_offset_y),
+    )
 }
 
 impl<'a, Message, Theme, Renderer, Handle> From<Viewer<Handle, Message>>
@@ -495,9 +486,7 @@ where
     }
 }
 
-/// Returns the bounds of the underlying image, given the bounds of
-/// the [`Viewer`]. Scaling will be applied and original aspect ratio
-/// will be respected.
+/// Returns the scaled size of the image given current state.
 pub fn scaled_image_size<Renderer>(
     renderer: &Renderer,
     handle: &<Renderer as img_renderer::Renderer>::Handle,
@@ -511,12 +500,9 @@ where
     let Size { width, height } = renderer.measure_image(handle);
     let image_size = Size::new(width as f32, height as f32);
 
-    // For ContentFit::None, use the raw image size directly with scale
-    // to ensure pixel-perfect rendering at scale 1.0
-    let adjusted_fit = if matches!(content_fit, ContentFit::None) {
-        image_size
-    } else {
-        content_fit.fit(image_size, bounds)
+    let adjusted_fit = match content_fit {
+        ContentFit::None => image_size,
+        _ => content_fit.fit(image_size, bounds),
     };
 
     Size::new(

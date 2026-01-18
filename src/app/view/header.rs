@@ -3,8 +3,8 @@
 //
 // Header bar buttons (navigation, rotation, flip).
 
-use cosmic::iced::Length;
-use cosmic::widget::{button, horizontal_space, icon};
+use cosmic::iced::{Alignment, Length};
+use cosmic::widget::{button, horizontal_space, icon, row};
 use cosmic::Element;
 
 use crate::app::message::AppMessage;
@@ -15,38 +15,43 @@ use crate::app::ContextPage;
 pub fn header_start(model: &AppModel) -> Vec<Element<'_, AppMessage>> {
     let has_doc = model.document.is_some();
 
+    // Left: Nav toggle + Navigation
+    let left_controls = row()
+        .push(
+            button::icon(icon::from_name("go-previous-symbolic"))
+                .on_press_maybe(has_doc.then_some(AppMessage::PrevDocument)),
+        )
+        .push(
+            button::icon(icon::from_name("go-next-symbolic"))
+                .on_press_maybe(has_doc.then_some(AppMessage::NextDocument)),
+        );
+
+    // Center: Transformations (horizontally centered)
+    let center_controls = row()
+        //.align_y(Alignment::Center)
+        .push(
+            button::icon(icon::from_name("object-rotate-left-symbolic"))
+                .on_press_maybe(has_doc.then_some(AppMessage::RotateCCW)),
+        )
+        .push(
+            button::icon(icon::from_name("object-rotate-right-symbolic"))
+                .on_press_maybe(has_doc.then_some(AppMessage::RotateCW)),
+        )
+        .push(horizontal_space().width(Length::Fixed(12.0)))
+        .push(
+            button::icon(icon::from_name("object-flip-horizontal-symbolic"))
+                .on_press_maybe(has_doc.then_some(AppMessage::FlipHorizontal)),
+        )
+        .push(
+            button::icon(icon::from_name("object-flip-vertical-symbolic"))
+                .on_press_maybe(has_doc.then_some(AppMessage::FlipVertical)),
+        );
+
     vec![
-        // Nav bar toggle
-        button::icon(icon::from_name("view-sidebar-start-symbolic"))
-            .on_press(AppMessage::ToggleNavBar)
-            .into(),
-        // Spacer
-        horizontal_space().width(Length::Fixed(12.0)).into(),
-        // Navigation: previous / next
-        button::icon(icon::from_name("go-previous-symbolic"))
-            .on_press_maybe(has_doc.then_some(AppMessage::PrevDocument))
-            .into(),
-        button::icon(icon::from_name("go-next-symbolic"))
-            .on_press_maybe(has_doc.then_some(AppMessage::NextDocument))
-            .into(),
-        // Spacer
-        horizontal_space().width(Length::Fixed(12.0)).into(),
-        // Rotation: counter-clockwise / clockwise
-        button::icon(icon::from_name("object-rotate-left-symbolic"))
-            .on_press_maybe(has_doc.then_some(AppMessage::RotateCCW))
-            .into(),
-        button::icon(icon::from_name("object-rotate-right-symbolic"))
-            .on_press_maybe(has_doc.then_some(AppMessage::RotateCW))
-            .into(),
-        // Spacer
-        horizontal_space().width(Length::Fixed(12.0)).into(),
-        // Flip: horizontal / vertical
-        button::icon(icon::from_name("object-flip-horizontal-symbolic"))
-            .on_press_maybe(has_doc.then_some(AppMessage::FlipHorizontal))
-            .into(),
-        button::icon(icon::from_name("object-flip-vertical-symbolic"))
-            .on_press_maybe(has_doc.then_some(AppMessage::FlipVertical))
-            .into(),
+        left_controls.into(),
+        //horizontal_space().width(Length::Fill).into(),
+        center_controls.into(),
+        horizontal_space().width(Length::Fill).into(),
     ]
 }
 

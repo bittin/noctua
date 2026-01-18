@@ -39,7 +39,11 @@ i18n-embed-fl = "0.10"
 open = "5.3.2"
 rust-embed = "8.8.0"
 dirs = "5.0"
+sha2 = "0.10"
 image = "0.25.9"
+poppler = { version = "0.4", features = ["render"] }
+cairo-rs = { version = "0.18", features = ["png"] }
+resvg = "0.45"
 clap = { version = "4.5.54", features = ["derive"] }
 env_logger = "0.11.8"
 wallpaper = "3.2"

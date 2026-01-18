@@ -1,72 +1,71 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // src/app/document/raster.rs
 
-use std::path::PathBuf;
+use std::path::Path;
 
-use cosmic::iced::widget::image as iced_image;
-use image::{GenericImageView, DynamicImage, ImageReader};
+use image::{imageops, DynamicImage, GenericImageView, ImageReader};
+
+use super::ImageHandle;
 
 /// Represents a raster image document (PNG, JPEG, WebP, ...).
 pub struct RasterDocument {
-    pub path: Option<PathBuf>,
-    pub image: DynamicImage,
-    pub handle: iced_image::Handle,
+    /// The decoded image document.
+    document: DynamicImage,
+    /// Cached handle for rendering.
+    pub handle: ImageHandle,
 }
 
 impl RasterDocument {
     /// Load a raster document from disk.
-    pub fn open(path: PathBuf) -> image::ImageResult<Self> {
-        let img = ImageReader::open(&path)?.decode()?;
-        let handle = Self::build_handle(&img);
+    pub fn open(path: &Path) -> image::ImageResult<Self> {
+        let document = ImageReader::open(path)?.decode()?;
+        let handle = super::create_image_handle(&document);
 
-        Ok(Self {
-            path: Some(path),
-            image: img,
-            handle,
-        })
+        Ok(Self { document, handle })
     }
 
-    /// Construct a handle from a DynamicImage.
-    fn build_handle(img: &DynamicImage) -> iced_image::Handle {
-        // Get image dimensions.
-        let (w, h) = img.dimensions();
-
-        // Convert to RGBA8 buffer and extract raw bytes.
-        let rgba = img.to_rgba8();
-        let pixels = rgba.into_raw(); // Vec<u8>
-
-        // Build an iced image handle from raw RGBA pixels.
-        iced_image::Handle::from_rgba(w, h, pixels)
-    }
-
-    /// Rebuild the handle after mutating `image`.
+    /// Rebuild the handle after mutating `document`.
     pub fn refresh_handle(&mut self) {
-        self.handle = Self::build_handle(&self.image);
+        self.handle = super::create_image_handle(&self.document);
     }
 
     /// Returns the native pixel dimensions (width, height).
     pub fn dimensions(&self) -> (u32, u32) {
-        self.image.dimensions()
+        self.document.dimensions()
     }
 
-    /// Save the current image back to disk (overwrite).
-    pub fn save(&self) -> image::ImageResult<()> {
-        if let Some(path) = &self.path {
-            self.image.save(path)
-        } else {
-            // Cant imagine that it happen but caller should handle missing path case.
-            Err(image::ImageError::Parameter(
-                image::error::ParameterError::from_kind(image::error::ParameterErrorKind::Generic(
-                    "RasterDocument does not have a path".into(),
-                )),
-            ))
-        }
+    /// Save the current document to disk.
+    pub fn save(&self, path: &Path) -> image::ImageResult<()> {
+        self.document.save(path)
     }
+
     /// Extract metadata for this raster document.
-    pub fn extract_meta(&self) -> super::meta::DocumentMeta {
-        let path = self.path.as_deref().unwrap_or(std::path::Path::new(""));
+    pub fn extract_meta(&self, path: &Path) -> super::meta::DocumentMeta {
         let (width, height) = self.dimensions();
+        super::meta::build_raster_meta(path, &self.document, width, height)
+    }
 
-        super::meta::build_raster_meta(path, &self.image, width, height)
+    /// Rotate 90 degrees clockwise.
+    pub fn rotate_cw(&mut self) {
+        self.document = DynamicImage::ImageRgba8(imageops::rotate90(&self.document));
+        self.refresh_handle();
+    }
+
+    /// Rotate 90 degrees counter-clockwise.
+    pub fn rotate_ccw(&mut self) {
+        self.document = DynamicImage::ImageRgba8(imageops::rotate270(&self.document));
+        self.refresh_handle();
+    }
+
+    /// Flip horizontally.
+    pub fn flip_horizontal(&mut self) {
+        self.document = DynamicImage::ImageRgba8(imageops::flip_horizontal(&self.document));
+        self.refresh_handle();
+    }
+
+    /// Flip vertically.
+    pub fn flip_vertical(&mut self) {
+        self.document = DynamicImage::ImageRgba8(imageops::flip_vertical(&self.document));
+        self.refresh_handle();
     }
 }

@@ -3,6 +3,7 @@
 
 mod app;
 mod config;
+mod constant;
 mod i18n;
 
 use anyhow::Result;

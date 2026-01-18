@@ -170,7 +170,7 @@ The following features are prepared in code but not yet implemented:
 ### File Operations
 - File open dialog
 - Save transformed images
-- Copy/Move/Delete operations
+- (Copy/Move/)Delete operations
 
 ### Document Support
 - SVG rendering with `resvg`

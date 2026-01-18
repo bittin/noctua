@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // src/app/model.rs
 //
-// Global application state.
+// Application state.
 
 use std::path::PathBuf;
 
@@ -9,20 +9,18 @@ use crate::app::document::meta::DocumentMeta;
 use crate::app::document::DocumentContent;
 use crate::config::AppConfig;
 
-/// How the document is currently fitted into the window.
+// =============================================================================
+// Enums
+// =============================================================================
+
 #[derive(Debug, Clone, Copy)]
 pub enum ViewMode {
-    /// Fit document to available window size.
     Fit,
-    /// Display at 100% (1.0 scale).
     ActualSize,
-    /// Custom zoom factor (e.g., 0.5 = 50%, 2.0 = 200%).
     Custom(f32),
 }
 
 impl ViewMode {
-    /// Return the effective zoom factor for this mode.
-    /// For `Fit`, returns `None` since the factor depends on window size.
     pub fn zoom_factor(&self) -> Option<f32> {
         match self {
             ViewMode::Fit => None,
@@ -32,7 +30,6 @@ impl ViewMode {
     }
 }
 
-/// Current editing / interaction mode.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ToolMode {
     None,
@@ -40,44 +37,34 @@ pub enum ToolMode {
     Scale,
 }
 
-/// Pan step size in pixels per key press.
-pub const PAN_STEP: f32 = 50.0;
+// =============================================================================
+// Model
+// =============================================================================
 
-/// Global application state.
-#[derive(Debug)]
 pub struct AppModel {
-    /// Currently opened document (raster/vector/portable).
+    // Document.
     pub document: Option<DocumentContent>,
-
-    /// Cached metadata for the current document.
-    /// Loaded lazily when the metadata panel is opened.
     pub metadata: Option<DocumentMeta>,
-
-    /// Path of the currently opened document, if any.
     pub current_path: Option<PathBuf>,
 
-    /// List of files in the current folder for navigation.
+    // Navigation.
     pub folder_entries: Vec<PathBuf>,
-
-    /// Index into `folder_entries` of the current file.
     pub current_index: Option<usize>,
 
-    /// View / zoom state.
+    // View.
     pub view_mode: ViewMode,
-
-    /// Pan offset (in pixels, relative to centered position).
     pub pan_x: f32,
     pub pan_y: f32,
 
-    /// Current tool mode.
+    // Tools.
     pub tool_mode: ToolMode,
 
-    /// Last error message to be shown in the UI, if any.
+    // UI state.
     pub error: Option<String>,
+    pub tick: u64,
 }
 
 impl AppModel {
-    /// Construct a new application state from configuration.
     pub fn new(_config: AppConfig) -> Self {
         Self {
             document: None,
@@ -90,26 +77,23 @@ impl AppModel {
             pan_y: 0.0,
             tool_mode: ToolMode::None,
             error: None,
+            tick: 0,
         }
     }
 
-    /// Helper: set an error string.
     pub fn set_error<S: Into<String>>(&mut self, msg: S) {
         self.error = Some(msg.into());
     }
 
-    /// Helper: clear current error.
     pub fn clear_error(&mut self) {
         self.error = None;
     }
 
-    /// Reset pan offset to center.
     pub fn reset_pan(&mut self) {
         self.pan_x = 0.0;
         self.pan_y = 0.0;
     }
 
-    /// Get the current zoom factor, if applicable.
     pub fn zoom_factor(&self) -> Option<f32> {
         self.view_mode.zoom_factor()
     }

@@ -3,19 +3,31 @@
 //
 // Application update loop: applies messages to the global model state.
 
+use cosmic::{Action, Task};
+
 use super::document;
 use super::message::AppMessage;
-use super::model::{AppModel, ToolMode, ViewMode, PAN_STEP};
+use super::model::{AppModel, ToolMode, ViewMode};
+use crate::config::AppConfig;
 
-/// Central update function applying messages to the model.
-///
-/// Panel toggle messages (ToggleContextPage) are handled directly in
-/// `Noctua::update()` since they affect COSMIC's Core state.
-pub fn update(model: &mut AppModel, msg: AppMessage) {
+// =============================================================================
+// Update Result
+// =============================================================================
+
+pub enum UpdateResult {
+    None,
+    Task(Task<Action<AppMessage>>),
+}
+
+// =============================================================================
+// Main Update Function
+// =============================================================================
+
+pub fn update(model: &mut AppModel, msg: &AppMessage, config: &AppConfig) -> UpdateResult {
     match msg {
-        // ===== File / navigation ==========================================================
+        // ---- File / navigation ----------------------------------------------------
         AppMessage::OpenPath(path) => {
-            document::file::open_single_file(model, &path);
+            document::file::open_single_file(model, path);
         }
 
         AppMessage::NextDocument => {
@@ -26,42 +38,79 @@ pub fn update(model: &mut AppModel, msg: AppMessage) {
             document::file::navigate_prev(model);
         }
 
-        // ===== View / zoom ===============================================================
-        AppMessage::ZoomIn => zoom_in(model),
-        AppMessage::ZoomOut => zoom_out(model),
+        AppMessage::GotoPage(page) => {
+            if let Some(doc) = &mut model.document {
+                if let Err(e) = doc.goto_page(*page) {
+                    log::error!("Failed to navigate to page {}: {}", page, e);
+                }
+            }
+        }
+
+        // ---- Thumbnail generation -------------------------------------------------
+        AppMessage::GenerateThumbnailPage(page) => {
+            if let Some(doc) = &mut model.document {
+                if let Some(next_page) = doc.generate_thumbnail_page(*page) {
+                    return UpdateResult::Task(Task::batch([
+                        Task::future(async move {
+                            Action::App(AppMessage::GenerateThumbnailPage(next_page))
+                        }),
+                        Task::done(Action::App(AppMessage::RefreshView)),
+                    ]));
+                }
+            }
+        }
+
+        AppMessage::RefreshView => {
+            model.tick += 1;
+        }
+
+        // ---- View / zoom ---------------------------------------------------------
+        AppMessage::ZoomIn => {
+            zoom_in(model, config);
+        }
+
+        AppMessage::ZoomOut => {
+            zoom_out(model, config);
+        }
+
         AppMessage::ZoomReset => {
             model.view_mode = ViewMode::ActualSize;
             model.reset_pan();
         }
+
         AppMessage::ZoomFit => {
             model.view_mode = ViewMode::Fit;
             model.reset_pan();
         }
-        AppMessage::ViewerStateChanged { scale, offset_x, offset_y } => {
-            // Update model state from viewer (mouse interaction)
-            model.view_mode = ViewMode::Custom(scale);
-            model.pan_x = offset_x;
-            model.pan_y = offset_y;
+
+        AppMessage::ViewerStateChanged {
+            scale,
+            offset_x,
+            offset_y,
+        } => {
+            model.view_mode = ViewMode::Custom(*scale);
+            model.pan_x = *offset_x;
+            model.pan_y = *offset_y;
         }
 
-        // ===== Pan control (Ctrl + arrow keys) ===========================================
+        // ---- Pan control ---------------------------------------------------------
         AppMessage::PanLeft => {
-            model.pan_x -= PAN_STEP;
+            model.pan_x -= config.pan_step;
         }
         AppMessage::PanRight => {
-            model.pan_x += PAN_STEP;
+            model.pan_x += config.pan_step;
         }
         AppMessage::PanUp => {
-            model.pan_y -= PAN_STEP;
+            model.pan_y -= config.pan_step;
         }
         AppMessage::PanDown => {
-            model.pan_y += PAN_STEP;
+            model.pan_y += config.pan_step;
         }
         AppMessage::PanReset => {
             model.reset_pan();
         }
 
-        // ===== Tool modes ================================================================
+        // ---- Tool modes ----------------------------------------------------------
         AppMessage::ToggleCropMode => {
             model.tool_mode = if model.tool_mode == ToolMode::Crop {
                 ToolMode::None
@@ -77,100 +126,95 @@ pub fn update(model: &mut AppModel, msg: AppMessage) {
             };
         }
 
-        // ===== Document transformations ==================================================
+        // ---- Document transformations --------------------------------------------
         AppMessage::FlipHorizontal => {
             if let Some(doc) = &mut model.document {
-                document::transform::flip_horizontal(doc);
+                doc.flip_horizontal();
             }
         }
         AppMessage::FlipVertical => {
             if let Some(doc) = &mut model.document {
-                document::transform::flip_vertical(doc);
+                doc.flip_vertical();
             }
         }
         AppMessage::RotateCW => {
             if let Some(doc) = &mut model.document {
-                document::transform::rotate_cw(doc);
+                doc.rotate_cw();
             }
         }
         AppMessage::RotateCCW => {
             if let Some(doc) = &mut model.document {
-                document::transform::rotate_ccw(doc);
+                doc.rotate_ccw();
             }
         }
 
-        // ===== Metadata ==================================================================
+        // ---- Metadata ------------------------------------------------------------
         AppMessage::RefreshMetadata => {
             refresh_metadata(model);
         }
 
-        // ===== Wallpaper =================================================================
+        // ---- Wallpaper -----------------------------------------------------------
         AppMessage::SetAsWallpaper => {
             set_as_wallpaper(model);
         }
 
-        // ===== Error handling ============================================================
+        // ---- Error handling ------------------------------------------------------
         AppMessage::ShowError(msg) => {
-            model.set_error(msg);
+            model.set_error(msg.clone());
         }
         AppMessage::ClearError => {
             model.clear_error();
         }
 
-        // ===== Handled elsewhere =========================================================
-        AppMessage::ToggleContextPage(_) => {
-            // Handled in Noctua::update() directly.
-        }
+        // ---- Handled elsewhere ---------------------------------------------------
+        AppMessage::ToggleContextPage(_) | AppMessage::ToggleNavBar => {}
 
-        AppMessage::ToggleNavBar => {
-            // Handled in Noctua::update() directly.
-        }
-
-        AppMessage::NoOp => {
-            // Intentionally do nothing.
-        }
+        AppMessage::NoOp => {}
     }
+
+    UpdateResult::None
 }
 
-/// Increment zoom level by 10%.
-fn zoom_in(model: &mut AppModel) {
+// =============================================================================
+// View Helpers
+// =============================================================================
+
+fn zoom_in(model: &mut AppModel, config: &AppConfig) {
     let current = current_zoom(model);
-    let new_zoom = (current * 1.1).clamp(0.05, 20.0);
+    let new_zoom = (current * config.scale_step).clamp(config.min_scale, config.max_scale);
+    let factor = new_zoom / current;
+    model.pan_x *= factor;
+    model.pan_y *= factor;
     model.view_mode = ViewMode::Custom(new_zoom);
 }
 
-/// Decrement zoom level by ~9% (inverse of 1.1).
-fn zoom_out(model: &mut AppModel) {
+fn zoom_out(model: &mut AppModel, config: &AppConfig) {
     let current = current_zoom(model);
-    let new_zoom = (current / 1.1).clamp(0.05, 20.0);
+    let new_zoom = (current / config.scale_step).clamp(config.min_scale, config.max_scale);
+    let factor = new_zoom / current;
+    model.pan_x *= factor;
+    model.pan_y *= factor;
     model.view_mode = ViewMode::Custom(new_zoom);
 }
 
-/// Extract the current effective zoom factor from the view mode.
 fn current_zoom(model: &AppModel) -> f32 {
     match model.view_mode {
-        ViewMode::Fit => 1.0,
-        ViewMode::ActualSize => 1.0,
+        ViewMode::Fit | ViewMode::ActualSize => 1.0,
         ViewMode::Custom(z) => z,
     }
 }
 
-/// Refresh metadata from the current document.
 fn refresh_metadata(model: &mut AppModel) {
-    model.metadata = model.document.as_ref().map(|doc| doc.extract_meta());
+    model.metadata = match (&model.document, &model.current_path) {
+        (Some(doc), Some(path)) => Some(doc.extract_meta(path)),
+        _ => None,
+    };
 }
 
-/// Set the current image as desktop wallpaper.
 fn set_as_wallpaper(model: &mut AppModel) {
     let Some(path) = model.current_path.as_ref() else {
         model.set_error("No image loaded");
         return;
     };
-
-    let path = path.clone();
-
-    // Spawn async task to set wallpaper
-    tokio::spawn(async move {
-        document::set_as_wallpaper(&path);
-    });
+    document::set_as_wallpaper(path);
 }

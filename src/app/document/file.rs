@@ -19,8 +19,8 @@ use crate::app::model::{AppModel, ViewMode};
 ///
 /// Raster formats are delegated to the `image` crate, which decides
 /// based on enabled codecs (e.g. default-formats).
-pub fn open_document(path: PathBuf) -> anyhow::Result<DocumentContent> {
-    let kind = DocumentKind::from_path(&path)
+pub fn open_document(path: &Path) -> anyhow::Result<DocumentContent> {
+    let kind = DocumentKind::from_path(path)
         .ok_or_else(|| anyhow!("Unsupported document type: {:?}", path))?;
 
     let content = match kind {
@@ -88,11 +88,13 @@ pub fn open_single_file(model: &mut AppModel, path: &Path) {
 
 /// Load a document into the model, resetting view state.
 fn load_document_into_model(model: &mut AppModel, path: &Path) {
-    match open_document(path.to_path_buf()) {
+    match open_document(path) {
         Ok(doc) => {
+            // Extract metadata before storing the document.
+            let metadata = doc.extract_meta(path);
+
             model.document = Some(doc);
-            // Reset cached metadata so it gets reloaded when panel is visible.
-            model.metadata = None;
+            model.metadata = Some(metadata);
             model.current_path = Some(path.to_path_buf());
             model.clear_error();
 
@@ -102,6 +104,7 @@ fn load_document_into_model(model: &mut AppModel, path: &Path) {
         }
         Err(err) => {
             model.document = None;
+            model.metadata = None;
             model.current_path = None;
             model.set_error(err.to_string());
         }

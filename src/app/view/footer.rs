@@ -9,17 +9,19 @@ use cosmic::Element;
 
 use crate::app::model::{AppModel, ViewMode};
 use crate::app::AppMessage;
+use crate::fl;
 
 /// Build the footer element with zoom controls and document info.
 pub fn view(model: &AppModel) -> Element<'_, AppMessage> {
     // Zoom level display.
     let zoom_text = match model.view_mode {
-        ViewMode::Fit => "Fit".to_string(),
+        ViewMode::Fit => fl!("status-zoom-fit"),
         _ => {
             if let Some(zoom) = model.zoom_factor() {
-                format!("{}%", (zoom * 100.0).round() as i32)
+                let percent = (zoom * 100.0).round() as i32;
+                fl!("status-zoom-percent", percent: percent)
             } else {
-                "Fit".to_string()
+                fl!("status-zoom-fit")
             }
         }
     };
@@ -27,7 +29,7 @@ pub fn view(model: &AppModel) -> Element<'_, AppMessage> {
     // Document dimensions (if available).
     let doc_info = if let Some(ref doc) = model.document {
         let (w, h) = doc.dimensions();
-        format!("{}×{}", w, h)
+        fl!("status-doc-dimensions", width: w, height: h)
     } else {
         String::new()
     };
@@ -36,7 +38,7 @@ pub fn view(model: &AppModel) -> Element<'_, AppMessage> {
     let nav_info = if !model.folder_entries.is_empty() {
         let current = model.current_index.map(|i| i + 1).unwrap_or(0);
         let total = model.folder_entries.len();
-        format!("{} / {}", current, total)
+        fl!("status-nav-position", current: current, total: total)
     } else {
         String::new()
     };
@@ -71,7 +73,7 @@ pub fn view(model: &AppModel) -> Element<'_, AppMessage> {
         .push(text::body(doc_info))
         // Separator.
         .push_maybe(if !model.folder_entries.is_empty() {
-            Some(text::body("  |  "))
+            Some(text::body(fl!("status-separator")))
         } else {
             None
         })

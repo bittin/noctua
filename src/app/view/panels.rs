@@ -17,11 +17,8 @@ pub fn properties_panel(model: &AppModel) -> Element<'static, AppMessage> {
     // Header with action icons
     content = content.push(panel_header(model));
 
-    // Display document metadata if available.
-    if let Some(ref doc) = model.document {
-        // Use the unified interface to extract metadata.
-        let meta = doc.extract_meta();
-
+    // Display document metadata if available (cached in model).
+    if let Some(ref meta) = model.metadata {
         // --- Basic Information Section ---
         content = content
             .push(section_header(fl!("meta-section-file")))
@@ -72,7 +69,7 @@ pub fn properties_panel(model: &AppModel) -> Element<'static, AppMessage> {
                 }
 
                 if let Some(iso) = exif.iso {
-                    content = content.push(meta_row(fl!("meta-iso"), format!("ISO {}", iso)));
+                    content = content.push(meta_row(fl!("meta-iso"), fl!("meta-iso", iso: iso)));
                 }
 
                 if let Some(ref focal) = exif.focal_length {
@@ -88,7 +85,10 @@ pub fn properties_panel(model: &AppModel) -> Element<'static, AppMessage> {
         // --- File Path (at the bottom, less prominent) ---
         content = content
             .push(divider::horizontal::light())
-            .push(meta_row_small(fl!("meta-path"), meta.basic.file_path.clone()));
+            .push(meta_row_small(
+                fl!("meta-path"),
+                meta.basic.file_path.clone(),
+            ));
     } else {
         content = content.push(text::body(fl!("no-document")));
     }
@@ -130,8 +130,8 @@ fn panel_header(model: &AppModel) -> Element<'static, AppMessage> {
         .push(horizontal_space().width(Length::Fill))
         .push(
             button::icon(icon::from_name("image-x-generic-symbolic"))
-                .on_press_maybe(has_doc.then_some(AppMessage::SetAsWallpaper))
                 .tooltip(fl!("action-set-wallpaper"))
+                .on_press_maybe(has_doc.then_some(AppMessage::SetAsWallpaper)),
         )
         // .push(
         //     button::icon(icon::from_name("system-run-symbolic"))

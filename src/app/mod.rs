@@ -10,9 +10,12 @@ pub mod update;
 
 mod view;
 
+use std::time::Duration;
+
 use cosmic::app::{context_drawer, Core};
 use cosmic::cosmic_config::{self, CosmicConfigEntry};
 use cosmic::iced::keyboard::{self, key::Named, Key, Modifiers};
+use cosmic::iced::time;
 use cosmic::iced::window;
 use cosmic::iced::Subscription;
 use cosmic::widget::nav_bar;
@@ -91,12 +94,15 @@ impl cosmic::Application for Noctua {
             document::file::open_initial_path(&mut model, path);
         }
 
-        // Initialize empty nav bar (for folder/thumbnail navigation later).
+        // Initialize nav bar model (required for COSMIC to show toggle icon).
         let nav = nav_bar::Model::default();
 
         // Apply persisted panel states.
         core.window.show_context = config.context_drawer_visible;
         core.nav_bar_set_toggled(config.nav_bar_visible);
+
+        // Start thumbnail generation for initial document if applicable.
+        let init_task = start_thumbnail_generation(&model);
 
         (
             Self {
@@ -107,7 +113,7 @@ impl cosmic::Application for Noctua {
                 config,
                 config_handler,
             },
-            Task::none(),
+            init_task,
         )
     }
 
@@ -117,15 +123,18 @@ impl cosmic::Application for Noctua {
 
     fn update(&mut self, message: Self::Message) -> Task<Action<Self::Message>> {
         match &message {
-            // Handle nav bar toggle. I think this is ugly but it works.
             AppMessage::ToggleNavBar => {
-                self.config.nav_bar_visible = !self.config.nav_bar_visible;
-                self.core.nav_bar_set_toggled(self.config.nav_bar_visible);
+                self.core.nav_bar_toggle();
+                let is_visible = self.core.nav_bar_active();
+                self.config.nav_bar_visible = is_visible;
                 self.save_config();
+
+                if is_visible {
+                    return start_thumbnail_generation_task(&self.model);
+                }
                 return Task::none();
             }
 
-            // Handle context panel toggle.
             AppMessage::ToggleContextPage(page) => {
                 if self.context_page == *page {
                     self.core.window.show_context = !self.core.window.show_context;
@@ -138,11 +147,22 @@ impl cosmic::Application for Noctua {
                 return Task::none();
             }
 
+            AppMessage::OpenPath(_) | AppMessage::NextDocument | AppMessage::PrevDocument => {
+                let result = update::update(&mut self.model, &message, &self.config);
+                let thumb_task = start_thumbnail_generation_task(&self.model);
+                return match result {
+                    update::UpdateResult::None => thumb_task,
+                    update::UpdateResult::Task(task) => Task::batch([task, thumb_task]),
+                };
+            }
+
             _ => {}
         }
 
-        update::update(&mut self.model, message);
-        Task::none()
+        match update::update(&mut self.model, &message, &self.config) {
+            update::UpdateResult::None => Task::none(),
+            update::UpdateResult::Task(task) => task,
+        }
     }
 
     fn header_start(&self) -> Vec<Element<'_, Self::Message>> {
@@ -154,7 +174,7 @@ impl cosmic::Application for Noctua {
     }
 
     fn view(&self) -> Element<'_, Self::Message> {
-        view::view(&self.model)
+        view::view(&self.model, &self.config)
     }
 
     fn context_drawer(&self) -> Option<context_drawer::ContextDrawer<'_, Self::Message>> {
@@ -171,12 +191,22 @@ impl cosmic::Application for Noctua {
         Some(&self.nav)
     }
 
+    fn nav_bar(&self) -> Option<Element<'_, Action<Self::Message>>> {
+        if !self.core.nav_bar_active() {
+            return None;
+        }
+        view::nav_bar(&self.model)
+    }
+
     fn footer(&self) -> Option<Element<'_, Self::Message>> {
         Some(view::footer::view(&self.model))
     }
 
     fn subscription(&self) -> Subscription<Self::Message> {
-        keyboard::on_key_press(handle_key_press)
+        Subscription::batch([
+            keyboard::on_key_press(handle_key_press),
+            thumbnail_refresh_subscription(self),
+        ])
     }
 }
 
@@ -226,7 +256,7 @@ fn handle_key_press(key: Key, modifiers: Modifiers) -> Option<AppMessage> {
         }
 
         // Zoom.
-        Key::Character("+" |"=") => Some(ZoomIn),
+        Key::Character("+" | "=") => Some(ZoomIn),
         Key::Character("-") => Some(ZoomOut),
         Key::Character("1") => Some(ZoomReset),
         Key::Character(ch) if ch.eq_ignore_ascii_case("f") => Some(ZoomFit),
@@ -248,5 +278,40 @@ fn handle_key_press(key: Key, modifiers: Modifiers) -> Option<AppMessage> {
         Key::Character(ch) if ch.eq_ignore_ascii_case("w") => Some(SetAsWallpaper),
 
         _ => None,
+    }
+}
+
+// =============================================================================
+// Thumbnail Helpers
+// =============================================================================
+
+fn start_thumbnail_generation(model: &AppModel) -> Task<Action<AppMessage>> {
+    start_thumbnail_generation_task(model)
+}
+
+fn start_thumbnail_generation_task(model: &AppModel) -> Task<Action<AppMessage>> {
+    if let Some(doc) = &model.document {
+        let page_count = doc.page_count().unwrap_or(0);
+        if page_count > 0 && !doc.thumbnails_ready() {
+            return Task::batch([
+                Task::done(Action::App(AppMessage::GenerateThumbnailPage(0))),
+                Task::done(Action::App(AppMessage::RefreshView)),
+            ]);
+        }
+    }
+    Task::none()
+}
+
+fn thumbnail_refresh_subscription(app: &Noctua) -> Subscription<AppMessage> {
+    let needs_refresh = app
+        .model
+        .document
+        .as_ref()
+        .map_or(false, |doc| doc.is_multi_page() && !doc.thumbnails_ready());
+
+    if needs_refresh {
+        time::every(Duration::from_millis(100)).map(|_| AppMessage::RefreshView)
+    } else {
+        Subscription::none()
     }
 }

@@ -10,6 +10,7 @@ use image::DynamicImage;
 use exif::{In, Reader as ExifReader, Tag, Value};
 
 use super::file;
+use crate::constant::{MINUTES_PER_DEGREE, SECONDS_PER_DEGREE};
 
 /// Basic document metadata (always available).
 #[derive(Debug, Clone)]
@@ -189,7 +190,7 @@ fn extract_gps_coord(exif: &exif::Exif, coord_tag: Tag, ref_tag: Tag) -> Option<
             let d = rats[0].to_f64();
             let m = rats[1].to_f64();
             let s = rats[2].to_f64();
-            d + m / 60.0 + s / 3600.0
+            d + m / MINUTES_PER_DEGREE + s / SECONDS_PER_DEGREE
         }
         _ => return None,
     };

@@ -43,7 +43,11 @@ macro_rules! fl {
         i18n_embed_fl::fl!($crate::i18n::LANGUAGE_LOADER, $message_id)
     }};
 
-    ($message_id:literal, $($args:expr),*) => {{
-        i18n_embed_fl::fl!($crate::i18n::LANGUAGE_LOADER, $message_id, $($args), *)
+    ($message_id:literal, $($name:ident: $value:expr),*) => {{
+        let mut args = std::collections::HashMap::new();
+        $(
+            args.insert(stringify!($name), $value.to_string());
+        )*
+        i18n_embed_fl::fl!($crate::i18n::LANGUAGE_LOADER, $message_id, args)
     }};
 }
