@@ -7,6 +7,7 @@ use std::path::PathBuf;
 
 use crate::app::document::meta::DocumentMeta;
 use crate::app::document::DocumentContent;
+use crate::app::view::crop::CropSelection;
 use crate::config::AppConfig;
 
 // =============================================================================
@@ -58,6 +59,7 @@ pub struct AppModel {
 
     // Tools.
     pub tool_mode: ToolMode,
+    pub crop_selection: CropSelection,
 
     // UI state.
     pub error: Option<String>,
@@ -76,6 +78,7 @@ impl AppModel {
             pan_x: 0.0,
             pan_y: 0.0,
             tool_mode: ToolMode::None,
+            crop_selection: CropSelection::default(),
             error: None,
             tick: 0,
         }

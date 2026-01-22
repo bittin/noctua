@@ -42,14 +42,14 @@ fn cache_key(file_path: &Path, page: usize) -> Option<String> {
     hasher.update(page.to_le_bytes());
 
     let hash = hasher.finalize();
-    Some(format!("{:x}", hash))
+    Some(format!("{hash:x}"))
 }
 
 /// Get the full path for a cached thumbnail.
 fn thumbnail_path(file_path: &Path, page: usize) -> Option<PathBuf> {
     let dir = cache_dir()?;
     let key = cache_key(file_path, page)?;
-    Some(dir.join(format!("{}.{}", key, THUMBNAIL_EXT)))
+    Some(dir.join(format!("{key}.{THUMBNAIL_EXT}")))
 }
 
 /// Load a thumbnail from disk cache.
@@ -81,7 +81,7 @@ pub fn load_thumbnail(file_path: &Path, page: usize) -> Option<ImageHandle> {
 pub fn save_thumbnail(file_path: &Path, page: usize, image: &DynamicImage) -> Option<()> {
     let dir = ensure_cache_dir()?;
     let key = cache_key(file_path, page)?;
-    let cache_path = dir.join(format!("{}.{}", key, THUMBNAIL_EXT));
+    let cache_path = dir.join(format!("{key}.{THUMBNAIL_EXT}"));
 
     log::debug!(
         "Saving thumbnail to cache: file={}, page={}, path={}",
@@ -98,7 +98,7 @@ pub fn save_thumbnail(file_path: &Path, page: usize, image: &DynamicImage) -> Op
         image::ImageFormat::Png,
     );
     match res {
-        Ok(_) => {
+        Ok(()) => {
             log::debug!(
                 "Thumbnail cached successfully: file={} page={}",
                 file_path.display(),
@@ -121,17 +121,16 @@ pub fn save_thumbnail(file_path: &Path, page: usize, image: &DynamicImage) -> Op
 /// Check if a thumbnail exists in cache.
 #[allow(dead_code)]
 pub fn has_thumbnail(file_path: &Path, page: usize) -> bool {
-    thumbnail_path(file_path, page)
-        .map(|p| p.exists())
-        .unwrap_or(false)
+    thumbnail_path(file_path, page).is_some_and(|p| p.exists())
 }
 
 /// Clear all cached thumbnails.
 #[allow(dead_code)]
 pub fn clear_cache() -> std::io::Result<()> {
     if let Some(dir) = cache_dir()
-        && dir.exists() {
-            fs::remove_dir_all(&dir)?;
-        }
+        && dir.exists()
+    {
+        fs::remove_dir_all(&dir)?;
+    }
     Ok(())
 }

@@ -40,22 +40,24 @@ pub fn update(model: &mut AppModel, msg: &AppMessage, config: &AppConfig) -> Upd
 
         AppMessage::GotoPage(page) => {
             if let Some(doc) = &mut model.document
-                && let Err(e) = doc.go_to_page(*page) {
-                    log::error!("Failed to navigate to page {}: {}", page, e);
-                }
+                && let Err(e) = doc.go_to_page(*page)
+            {
+                log::error!("Failed to navigate to page {page}: {e}");
+            }
         }
 
         // ---- Thumbnail generation -------------------------------------------------
         AppMessage::GenerateThumbnailPage(page) => {
             if let Some(doc) = &mut model.document
-                && let Some(next_page) = doc.generate_thumbnail_page(*page) {
-                    return UpdateResult::Task(Task::batch([
-                        Task::future(async move {
-                            Action::App(AppMessage::GenerateThumbnailPage(next_page))
-                        }),
-                        Task::done(Action::App(AppMessage::RefreshView)),
-                    ]));
-                }
+                && let Some(next_page) = doc.generate_thumbnail_page(*page)
+            {
+                return UpdateResult::Task(Task::batch([
+                    Task::future(async move {
+                        Action::App(AppMessage::GenerateThumbnailPage(next_page))
+                    }),
+                    Task::done(Action::App(AppMessage::RefreshView)),
+                ]));
+            }
         }
 
         AppMessage::RefreshView => {
@@ -110,6 +112,10 @@ pub fn update(model: &mut AppModel, msg: &AppMessage, config: &AppConfig) -> Upd
 
         // ---- Tool modes ----------------------------------------------------------
         AppMessage::ToggleCropMode => {
+            eprintln!(
+                "DEBUG: ToggleCropMode received, current tool_mode={:?}",
+                model.tool_mode
+            );
             model.tool_mode = if model.tool_mode == ToolMode::Crop {
                 ToolMode::None
             } else {
@@ -122,6 +128,68 @@ pub fn update(model: &mut AppModel, msg: &AppMessage, config: &AppConfig) -> Upd
             } else {
                 ToolMode::Scale
             };
+        }
+
+        // ---- Crop operations -----------------------------------------------------
+        AppMessage::StartCrop => {
+            if model.document.is_some() {
+                model.tool_mode = ToolMode::Crop;
+                model.crop_selection.reset();
+            }
+        }
+        AppMessage::CancelCrop => {
+            if model.tool_mode == ToolMode::Crop {
+                model.tool_mode = ToolMode::None;
+                model.crop_selection.reset();
+            }
+        }
+        AppMessage::ApplyCrop => {
+            if model.tool_mode == ToolMode::Crop {
+                if let Some((x, y, width, height)) = model.crop_selection.as_pixel_rect() {
+                    if let Some(path) = &model.current_path {
+                        if let Some(doc) = &model.document {
+                            match document::file::save_crop_as(doc, path, x, y, width, height) {
+                                Ok(new_path) => {
+                                    document::file::open_single_file(model, &new_path);
+                                    model.tool_mode = ToolMode::None;
+                                    model.crop_selection.reset();
+                                }
+                                Err(e) => {
+                                    model.set_error(format!("Crop save failed: {e}"));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        AppMessage::CropDragStart { x, y, handle } => {
+            if model.tool_mode == ToolMode::Crop {
+                if *handle == super::view::crop::DragHandle::None {
+                    model.crop_selection.start_new_selection(*x, *y);
+                } else {
+                    model.crop_selection.start_handle_drag(*handle, *x, *y);
+                }
+            }
+        }
+        AppMessage::CropDragMove { x, y } => {
+            if model.tool_mode == ToolMode::Crop {
+                if let Some(doc) = &model.document {
+                    let (w, h) = doc.dimensions();
+                    #[allow(clippy::cast_precision_loss)]
+                    model.crop_selection.update_drag(*x, *y, w as f32, h as f32);
+                }
+            }
+        }
+        AppMessage::CropDragEnd => {
+            if model.tool_mode == ToolMode::Crop {
+                model.crop_selection.end_drag();
+            }
+        }
+
+        // ---- Save operations -----------------------------------------------------
+        AppMessage::SaveAs => {
+            save_as(model);
         }
 
         // ---- Document transformations --------------------------------------------
@@ -215,4 +283,10 @@ fn set_as_wallpaper(model: &mut AppModel) {
         return;
     };
     document::set_as_wallpaper(path);
+}
+
+fn save_as(model: &mut AppModel) {
+    // TODO: Implement file dialog for save path
+    // For now, show error that this needs UI integration
+    model.set_error("Save As: File dialog not yet implemented");
 }

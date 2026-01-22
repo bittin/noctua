@@ -4,6 +4,7 @@
 // View module root, combining all view components.
 
 mod canvas;
+pub mod crop;
 pub mod footer;
 pub mod header;
 mod image_viewer;

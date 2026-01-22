@@ -24,6 +24,8 @@ pub struct AppConfig {
     pub min_scale: f32,
     /// Maximum zoom level (8.0 = 800% of original size).
     pub max_scale: f32,
+    /// Show 3x3 grid during crop selection.
+    pub crop_show_grid: bool,
 }
 
 impl Default for AppConfig {
@@ -36,6 +38,7 @@ impl Default for AppConfig {
             pan_step: 50.0,
             min_scale: 0.1,
             max_scale: 8.0,
+            crop_show_grid: true,
         }
     }
 }

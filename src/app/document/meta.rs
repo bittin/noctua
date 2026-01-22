@@ -38,14 +38,19 @@ impl BasicMeta {
         const MB: u64 = KB * 1024;
         const GB: u64 = MB * 1024;
 
+        #[allow(clippy::cast_precision_loss)]
         if self.file_size >= GB {
-            format!("{:.2} GB", self.file_size as f64 / GB as f64)
+            let size_gb = self.file_size as f64 / GB as f64;
+            format!("{size_gb:.2} GB")
         } else if self.file_size >= MB {
-            format!("{:.2} MB", self.file_size as f64 / MB as f64)
+            let size_mb = self.file_size as f64 / MB as f64;
+            format!("{size_mb:.2} MB")
         } else if self.file_size >= KB {
-            format!("{:.1} KB", self.file_size as f64 / KB as f64)
+            let size_kb = self.file_size as f64 / KB as f64;
+            format!("{size_kb:.1} KB")
         } else {
-            format!("{} B", self.file_size)
+            let size = self.file_size;
+            format!("{size} B")
         }
     }
 
@@ -77,7 +82,7 @@ impl ExifMeta {
                 if model.starts_with(make) {
                     Some(model.clone())
                 } else {
-                    Some(format!("{} {}", make, model))
+                    Some(format!("{make} {model}"))
                 }
             }
             (Some(make), None) => Some(make.clone()),
@@ -89,7 +94,7 @@ impl ExifMeta {
     /// Format GPS coordinates for display.
     pub fn gps_display(&self) -> Option<String> {
         match (self.gps_latitude, self.gps_longitude) {
-            (Some(lat), Some(lon)) => Some(format!("{:.5}, {:.5}", lat, lon)),
+            (Some(lat), Some(lon)) => Some(format!("{lat:.5}, {lon:.5}")),
             _ => None,
         }
     }
@@ -165,9 +170,10 @@ fn extract_exif_from_bytes(data: &[u8]) -> Option<ExifMeta> {
     }
     if let Some(field) = exif.get_field(Tag::PhotographicSensitivity, In::PRIMARY)
         && let Value::Short(ref vals) = field.value
-            && let Some(&iso) = vals.first() {
-                meta.iso = Some(iso as u32);
-            }
+        && let Some(&iso) = vals.first()
+    {
+        meta.iso = Some(u32::from(iso));
+    }
     if let Some(field) = exif.get_field(Tag::FocalLength, In::PRIMARY) {
         meta.focal_length = Some(field.display_value().to_string());
     }
@@ -210,7 +216,10 @@ fn extract_gps_coord(exif: &exif::Exif, coord_tag: Tag, ref_tag: Tag) -> Option<
 
 /// Determine color type string from DynamicImage.
 fn color_type_string(img: &DynamicImage) -> String {
-    use image::DynamicImage::*;
+    use image::DynamicImage::{
+        ImageLuma8, ImageLumaA8, ImageRgb8, ImageRgba8, ImageLuma16, ImageLumaA16, ImageRgb16,
+        ImageRgba16, ImageRgb32F, ImageRgba32F,
+    };
     match img {
         ImageLuma8(_) => "Grayscale 8-bit".to_string(),
         ImageLumaA8(_) => "Grayscale+Alpha 8-bit".to_string(),
@@ -230,8 +239,7 @@ fn color_type_string(img: &DynamicImage) -> String {
 fn format_from_extension(path: &Path) -> String {
     path.extension()
         .and_then(|e| e.to_str())
-        .map(|e| e.to_uppercase())
-        .unwrap_or_else(|| "Unknown".to_string())
+        .map_or_else(|| "Unknown".to_string(), str::to_uppercase)
 }
 
 // ---------------------------------------------------------------------------
@@ -259,7 +267,7 @@ pub fn build_vector_meta(path: &Path, width: u32, height: u32) -> DocumentMeta {
 
 /// Build metadata for a portable document.
 pub fn build_portable_meta(path: &Path, width: u32, height: u32, page_count: u32) -> DocumentMeta {
-    let format = format!("PDF ({} pages)", page_count);
+    let format = format!("PDF ({page_count} pages)");
     let basic = extract_basic_meta(path, width, height, &format, "Rendered".to_string());
 
     DocumentMeta { basic, exif: None }

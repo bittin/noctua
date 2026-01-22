@@ -6,6 +6,7 @@
 use std::path::PathBuf;
 
 use crate::app::ContextPage;
+use crate::app::view::crop::DragHandle;
 
 #[derive(Debug, Clone)]
 pub enum AppMessage {
@@ -45,6 +46,21 @@ pub enum AppMessage {
     ToggleCropMode,
     ToggleScaleMode,
 
+    // Crop operations.
+    StartCrop,
+    CancelCrop,
+    ApplyCrop,
+    CropDragStart {
+        x: f32,
+        y: f32,
+        handle: DragHandle,
+    },
+    CropDragMove {
+        x: f32,
+        y: f32,
+    },
+    CropDragEnd,
+
     // Panels.
     ToggleContextPage(ContextPage),
     ToggleNavBar,
@@ -52,6 +68,9 @@ pub enum AppMessage {
     // Metadata.
     #[allow(dead_code)]
     RefreshMetadata,
+
+    // Save operations.
+    SaveAs,
 
     // Wallpaper.
     SetAsWallpaper,

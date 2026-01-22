@@ -55,7 +55,7 @@ impl VectorDocument {
 
         // Render at native scale (1.0).
         let (rendered, width, height) =
-            render_document(&document, native_width, native_height, 1.0, &transform)?;
+            render_document(&document, native_width, native_height, 1.0, transform)?;
         let handle = super::create_image_handle_from_image(&rendered);
 
         Ok(Self {
@@ -90,7 +90,7 @@ impl VectorDocument {
             self.native_width,
             self.native_height,
             scale,
-            &self.transform,
+            self.transform,
         ) {
             Ok((rendered, width, height)) => {
                 self.current_scale = scale;
@@ -101,7 +101,7 @@ impl VectorDocument {
                 true
             }
             Err(e) => {
-                log::error!("Failed to re-render SVG at scale {}: {}", scale, e);
+                log::error!("Failed to re-render SVG at scale {scale}: {e}");
                 false
             }
         }
@@ -114,7 +114,7 @@ impl VectorDocument {
             self.native_width,
             self.native_height,
             self.current_scale,
-            &self.transform,
+            self.transform,
         ) {
             self.rendered = rendered;
             self.width = width;
@@ -178,12 +178,12 @@ fn render_document(
     native_width: u32,
     native_height: u32,
     scale: f64,
-    transform: &TransformState,
+    transform: TransformState,
 ) -> anyhow::Result<(DynamicImage, u32, u32)> {
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    let width = (((native_width as f64) * scale).ceil() as u32).max(MIN_PIXMAP_SIZE);
+    let width = ((f64::from(native_width) * scale).ceil() as u32).max(MIN_PIXMAP_SIZE);
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    let height = (((native_height as f64) * scale).ceil() as u32).max(MIN_PIXMAP_SIZE);
+    let height = ((f64::from(native_height) * scale).ceil() as u32).max(MIN_PIXMAP_SIZE);
 
     let mut pixmap =
         Pixmap::new(width, height).ok_or_else(|| anyhow::anyhow!("Failed to create pixmap"))?;

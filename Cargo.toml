@@ -14,11 +14,23 @@ license = "GPL-3.0-or-later"
 keywords = ["document", "image", "viewer", "pdf", "cosmic"]
 categories = ["gui", "multimedia::graphics", "multimedia::images"]
 
+[features]
+default = ["image", "vector", "portable"]
+image = ["dep:image", "dep:kamadak-exif"]
+vector = ["dep:resvg"]
+portable = ["dep:poppler", "dep:cairo-rs"]
+full = ["image", "vector", "portable"]
+
 [dependencies]
 # Error handling
 anyhow = "1"
 
-kamadak-exif = "0.5.5"
+# Feature-gated dependencies
+kamadak-exif = { version = "0.5.5", optional = true }
+image = { version = "0.25.9", optional = true }
+poppler = { version = "0.4", features = ["render"], optional = true }
+cairo-rs = { version = "0.18", features = ["png"], optional = true }
+resvg = { version = "0.45", optional = true }
 
 # Async / concurrency
 futures-util = "0.3.31"
@@ -40,10 +52,6 @@ open = "5.3.2"
 rust-embed = "8.8.0"
 dirs = "5.0"
 sha2 = "0.10"
-image = "0.25.9"
-poppler = { version = "0.4", features = ["render"] }
-cairo-rs = { version = "0.18", features = ["png"] }
-resvg = "0.45"
 clap = { version = "4.5.54", features = ["derive"] }
 env_logger = "0.11.8"
 wallpaper = "3.2"

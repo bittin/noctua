@@ -91,7 +91,7 @@ impl cosmic::Application for Noctua {
         });
 
         if let Some(path) = initial_path {
-            document::file::open_initial_path(&mut model, path);
+            document::file::open_initial_path(&mut model, &path);
         }
 
         // Initialize nav bar model (required for COSMIC to show toggle icon).
@@ -221,6 +221,7 @@ impl Noctua {
 
 /// Map raw key presses + modifiers into high-level application messages.
 fn handle_key_press(key: Key, modifiers: Modifiers) -> Option<AppMessage> {
+    eprintln!("DEBUG KEY: key={:?} modifiers={:?}", key, modifiers);
     use AppMessage::*;
 
     // Handle Ctrl + arrow keys for panning.
@@ -262,8 +263,15 @@ fn handle_key_press(key: Key, modifiers: Modifiers) -> Option<AppMessage> {
         Key::Character(ch) if ch.eq_ignore_ascii_case("f") => Some(ZoomFit),
 
         // Tool modes.
-        Key::Character(ch) if ch.eq_ignore_ascii_case("c") => Some(ToggleCropMode),
+        Key::Character(ch) if ch.eq_ignore_ascii_case("c") => {
+            eprintln!("DEBUG MATCH: ToggleCropMode");
+            Some(ToggleCropMode)
+        }
         Key::Character(ch) if ch.eq_ignore_ascii_case("s") => Some(ToggleScaleMode),
+
+        // Crop mode actions (Enter/Escape handled via key press, validated in update).
+        Key::Named(Named::Enter) => Some(AppMessage::ApplyCrop),
+        Key::Named(Named::Escape) => Some(AppMessage::CancelCrop),
 
         // Reset pan.
         Key::Character("0") => Some(PanReset),

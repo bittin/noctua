@@ -22,15 +22,12 @@ pub fn set_as_wallpaper(path: &Path) {
         }
     };
 
-    let path_str = match abs_path.to_str() {
-        Some(s) => s,
-        None => {
-            log::error!("Invalid UTF-8 in path: {}", abs_path.display());
-            return;
-        }
+    let Some(path_str) = abs_path.to_str() else {
+        log::error!("Invalid UTF-8 in path: {}", abs_path.display());
+        return;
     };
 
-    log::info!("Attempting to set wallpaper: {}", path_str);
+    log::info!("Attempting to set wallpaper: {path_str}");
 
     // Method 1: Try COSMIC Desktop (direct config file modification).
     if try_cosmic_wallpaper(path_str) {
@@ -69,23 +66,22 @@ fn try_cosmic_wallpaper(path_str: &str) -> bool {
     let config_content = format!(
         r#"(
     output: "all",
-    source: Path("{}"),
+    source: Path("{path_str}"),
     filter_by_theme: true,
     rotation_frequency: 300,
     filter_method: Lanczos,
     scaling_mode: Zoom,
     sampling_method: Alphanumeric,
-)"#,
-        path_str
+)"#
     );
 
     match std::fs::write(&cosmic_config, config_content) {
-        Ok(_) => {
+        Ok(()) => {
             log::info!("Wallpaper set via COSMIC config");
             true
         }
         Err(e) => {
-            log::warn!("Failed to write COSMIC config: {}", e);
+            log::warn!("Failed to write COSMIC config: {e}");
             false
         }
     }
@@ -94,12 +90,12 @@ fn try_cosmic_wallpaper(path_str: &str) -> bool {
 /// Try setting wallpaper via wallpaper crate.
 fn try_wallpaper_crate(path_str: &str) -> bool {
     match wallpaper::set_from_path(path_str) {
-        Ok(_) => {
+        Ok(()) => {
             log::info!("Wallpaper set via wallpaper crate");
             true
         }
         Err(e) => {
-            log::warn!("wallpaper crate failed: {}", e);
+            log::warn!("wallpaper crate failed: {e}");
             false
         }
     }
@@ -107,7 +103,7 @@ fn try_wallpaper_crate(path_str: &str) -> bool {
 
 /// Try setting wallpaper via GNOME gsettings.
 fn try_gsettings_wallpaper(path_str: &str) -> bool {
-    let uri = format!("file://{}", path_str);
+    let uri = format!("file://{path_str}");
 
     let output = match std::process::Command::new("gsettings")
         .args(["set", "org.gnome.desktop.background", "picture-uri", &uri])
@@ -115,7 +111,7 @@ fn try_gsettings_wallpaper(path_str: &str) -> bool {
     {
         Ok(o) => o,
         Err(e) => {
-            log::warn!("gsettings command failed: {}", e);
+            log::warn!("gsettings command failed: {e}");
             return false;
         }
     };
@@ -145,15 +141,12 @@ fn try_gsettings_wallpaper(path_str: &str) -> bool {
 
 /// Try setting wallpaper via feh.
 fn try_feh_wallpaper(path_str: &str) -> bool {
-    let output = match std::process::Command::new("feh")
+    let Ok(output) = std::process::Command::new("feh")
         .args(["--bg-scale", path_str])
         .output()
-    {
-        Ok(o) => o,
-        Err(_) => {
-            log::warn!("feh not available");
-            return false;
-        }
+    else {
+        log::warn!("feh not available");
+        return false;
     };
 
     if output.status.success() {

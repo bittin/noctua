@@ -62,6 +62,54 @@ impl RasterDocument {
     pub fn extract_meta(&self, path: &Path) -> super::meta::DocumentMeta {
         super::meta::build_raster_meta(path, &self.document, self.native_width, self.native_height)
     }
+
+    /// Crop the image to the specified rectangle.
+    ///
+    /// Coordinates are in pixels relative to the current image dimensions.
+    /// Returns an error if the rectangle is out of bounds.
+    pub fn crop(&mut self, x: u32, y: u32, width: u32, height: u32) -> DocResult<()> {
+        let (img_width, img_height) = self.document.dimensions();
+
+        if x + width > img_width || y + height > img_height {
+            return Err(anyhow::anyhow!(
+                "Crop rectangle out of bounds: {width}x{height} at ({x}, {y}) exceeds image size {img_width}x{img_height}"
+            ));
+        }
+
+        let cropped = imageops::crop_imm(&self.document, x, y, width, height).to_image();
+        self.document = DynamicImage::ImageRgba8(cropped);
+
+        self.native_width = width;
+        self.native_height = height;
+
+        self.transform = TransformState::default();
+
+        self.refresh_handle();
+
+        Ok(())
+    }
+
+    /// Crop the image to the specified rectangle and return as DynamicImage.
+    ///
+    /// This does NOT modify the document - it's used for exporting cropped images.
+    pub fn crop_to_image(
+        &self,
+        x: u32,
+        y: u32,
+        width: u32,
+        height: u32,
+    ) -> DocResult<DynamicImage> {
+        let (img_width, img_height) = self.document.dimensions();
+
+        if x + width > img_width || y + height > img_height {
+            return Err(anyhow::anyhow!(
+                "Crop rectangle out of bounds: {width}x{height} at ({x}, {y}) exceeds image size {img_width}x{img_height}"
+            ));
+        }
+
+        let cropped = imageops::crop_imm(&self.document, x, y, width, height).to_image();
+        Ok(DynamicImage::ImageRgba8(cropped))
+    }
 }
 
 // ============================================================================

@@ -40,7 +40,7 @@ impl PortableDocument {
     /// Open a PDF document and render the first page.
     pub fn open(path: &Path) -> anyhow::Result<Self> {
         let document = PopplerDocument::new_from_file(path, None)
-            .map_err(|e| anyhow::anyhow!("Failed to parse PDF: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to parse PDF: {e}"))?;
 
         let num_pages = document.get_n_pages();
         if num_pages == 0 {
@@ -107,14 +107,13 @@ impl PortableDocument {
             return handle;
         }
 
-        match Self::render_page_at_scale(&self.document, page, Rotation::None, PDF_THUMBNAIL_SIZE)
-        {
+        match Self::render_page_at_scale(&self.document, page, Rotation::None, PDF_THUMBNAIL_SIZE) {
             Ok(img) => {
                 let _ = cache::save_thumbnail(&self.source_path, page, &img);
                 super::create_image_handle_from_image(&img)
             }
             Err(e) => {
-                log::warn!("Failed to generate thumbnail for page {}: {}", page, e);
+                log::warn!("Failed to generate thumbnail for page {page}: {e}");
                 ImageHandle::from_rgba(1, 1, vec![0, 0, 0, 0])
             }
         }
@@ -138,7 +137,7 @@ impl PortableDocument {
     ) -> anyhow::Result<DynamicImage> {
         let page = document
             .get_page(page_index)
-            .ok_or_else(|| anyhow::anyhow!("Failed to get page {}", page_index))?;
+            .ok_or_else(|| anyhow::anyhow!("Failed to get page {page_index}"))?;
 
         let (page_width, page_height) = page.get_size();
         let rotation_degrees = rotation.to_degrees();
@@ -155,10 +154,10 @@ impl PortableDocument {
         let scaled_height = (height * scale) as i32;
 
         let surface = ImageSurface::create(Format::ARgb32, scaled_width, scaled_height)
-            .map_err(|e| anyhow::anyhow!("Failed to create Cairo surface: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to create Cairo surface: {e}"))?;
 
         let context = Context::new(&surface)
-            .map_err(|e| anyhow::anyhow!("Failed to create Cairo context: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to create Cairo context: {e}"))?;
 
         // Fill with white background.
         context.set_source_rgb(1.0, 1.0, 1.0);
@@ -182,13 +181,13 @@ impl PortableDocument {
         let mut png_data: Vec<u8> = Vec::new();
         surface
             .write_to_png(&mut png_data)
-            .map_err(|e| anyhow::anyhow!("Failed to write PNG: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to write PNG: {e}"))?;
 
         let image = ImageReader::new(Cursor::new(png_data))
             .with_guessed_format()
-            .map_err(|e| anyhow::anyhow!("Failed to read PNG format: {}", e))?
+            .map_err(|e| anyhow::anyhow!("Failed to read PNG format: {e}"))?
             .decode()
-            .map_err(|e| anyhow::anyhow!("Failed to decode PNG: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to decode PNG: {e}"))?;
 
         Ok(image)
     }
@@ -208,7 +207,7 @@ impl PortableDocument {
                 self.refresh_handle();
             }
             Err(e) => {
-                log::error!("Failed to render PDF page: {}", e);
+                log::error!("Failed to render PDF page: {e}");
             }
         }
     }

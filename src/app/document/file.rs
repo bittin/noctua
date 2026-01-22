@@ -21,7 +21,7 @@ use crate::app::model::{AppModel, ViewMode};
 /// based on enabled codecs (e.g. default-formats).
 pub fn open_document(path: &Path) -> anyhow::Result<DocumentContent> {
     let kind = DocumentKind::from_path(path)
-        .ok_or_else(|| anyhow!("Unsupported document type: {:?}", path))?;
+        .ok_or_else(|| anyhow!("Unsupported document type: {}", path.display()))?;
 
     let content = match kind {
         DocumentKind::Raster => {
@@ -46,11 +46,11 @@ pub fn open_document(path: &Path) -> anyhow::Result<DocumentContent> {
 /// If `path` is a directory, this will collect supported documents inside it,
 /// open the first one, and initialize navigation state. If it is a file, the
 /// file is opened directly and the surrounding folder is scanned.
-pub fn open_initial_path(model: &mut AppModel, path: PathBuf) {
+pub fn open_initial_path(model: &mut AppModel, path: &PathBuf) {
     if path.is_dir() {
-        open_from_directory(model, &path);
+        open_from_directory(model, path);
     } else {
-        open_single_file(model, &path);
+        open_single_file(model, path);
     }
 }
 
@@ -80,9 +80,10 @@ pub fn open_single_file(model: &mut AppModel, path: &Path) {
 
     // Refresh folder listing based on parent directory.
     if model.document.is_some()
-        && let Some(parent) = path.parent() {
-            refresh_folder_entries(model, parent, path);
-        }
+        && let Some(parent) = path.parent()
+    {
+        refresh_folder_entries(model, parent, path);
+    }
 }
 
 /// Load a document into the model, resetting view state.
@@ -199,4 +200,52 @@ pub fn file_size(path: &Path) -> u64 {
 /// Returns None if the file cannot be read.
 pub fn read_file_bytes(path: &Path) -> Option<Vec<u8>> {
     fs::read(path).ok()
+}
+
+// ---------------------------------------------------------------------------
+// Crop operations
+// ---------------------------------------------------------------------------
+
+/// Save a cropped version of the document with coordinates in filename.
+///
+/// Format: "original_NAME_X_Y.EXT"
+/// Example: "image.png" → "image_100_200.png"
+pub fn save_crop_as(
+    doc: &DocumentContent,
+    original_path: &Path,
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+) -> Result<PathBuf, String> {
+    let stem = original_path
+        .file_stem()
+        .ok_or_else(|| "Invalid path".to_string())?
+        .to_string_lossy();
+    let ext = original_path
+        .extension()
+        .ok_or_else(|| "No extension".to_string())?
+        .to_string_lossy();
+
+    let new_filename = format!("{stem}_{x}_{y}");
+    let new_path = original_path
+        .with_file_name(&new_filename)
+        .with_extension(ext.as_ref());
+
+    match doc {
+        DocumentContent::Raster(raster_doc) => {
+            let cropped_image = raster_doc
+                .crop_to_image(x, y, width, height)
+                .map_err(|e| e.to_string())?;
+            cropped_image.save(&new_path).map_err(|e| e.to_string())?;
+        }
+        DocumentContent::Vector(_) => {
+            return Err("Crop not supported for vector documents".to_string());
+        }
+        DocumentContent::Portable(_) => {
+            return Err("Crop not supported for PDF documents".to_string());
+        }
+    }
+
+    Ok(new_path)
 }

@@ -6,18 +6,26 @@
 pub mod cache;
 pub mod file;
 pub mod meta;
-pub mod portable;
-pub mod raster;
 pub mod utils;
+
+#[cfg(feature = "portable")]
+pub mod portable;
+#[cfg(feature = "image")]
+pub mod raster;
+#[cfg(feature = "vector")]
 pub mod vector;
 
 use cosmic::iced_renderer::graphics::image::image_rs::ImageFormat as CosmicImageFormat;
+#[cfg(feature = "image")]
 use image::GenericImageView;
 use std::fmt;
 use std::path::Path;
 
+#[cfg(feature = "portable")]
 use self::portable::PortableDocument;
+#[cfg(feature = "image")]
 use self::raster::RasterDocument;
+#[cfg(feature = "vector")]
 use self::vector::VectorDocument;
 
 // ============================================================================
@@ -95,8 +103,6 @@ pub struct TransformState {
     /// Whether flipped vertically.
     pub flip_v: bool,
 }
-
-
 
 /// Output of a render operation.
 ///
@@ -360,6 +366,18 @@ impl DocumentContent {
         self.flip(FlipDirection::Vertical);
     }
 
+    /// Crop the document to the specified rectangle.
+    ///
+    /// Only supported for raster images. Returns an error for vector/PDF documents.
+    /// Coordinates are in pixels relative to current image dimensions.
+    pub fn crop(&mut self, x: u32, y: u32, width: u32, height: u32) -> DocResult<()> {
+        match self {
+            Self::Raster(doc) => doc.crop(x, y, width, height),
+            Self::Vector(_) => Err(anyhow::anyhow!("Crop not supported for vector documents")),
+            Self::Portable(_) => Err(anyhow::anyhow!("Crop not supported for PDF documents")),
+        }
+    }
+
     /// Get document kind.
     ///
     /// Reserved for future use (format-specific optimizations, statistics).
@@ -446,7 +464,9 @@ impl DocumentContent {
     /// Currently unused - thumbnails are generated incrementally via `generate_thumbnail_page()`.
     #[allow(dead_code)]
     pub fn generate_thumbnails(&mut self) {
-        if let Self::Portable(doc) = self { doc.generate_all_thumbnails() }
+        if let Self::Portable(doc) = self {
+            doc.generate_all_thumbnails()
+        }
     }
 
     /// Get current image handle for display.
