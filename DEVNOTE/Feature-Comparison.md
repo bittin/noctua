@@ -145,10 +145,10 @@
 - [x] `crop()` implementieren (render-based) ✅
 
 ### Schritt 1.4: PortableDocument (45 Min)
-- [ ] `dimensions()` implementieren
-- [ ] `handle()` getter hinzufügen
-- [ ] `extract_meta()` implementieren
-- [ ] `crop()` implementieren (render-based, neu!)
+- [x] `dimensions()` - Bereits vorhanden ✅
+- [x] `handle()` getter - Bereits vorhanden ✅
+- [x] `extract_meta()` implementieren ✅
+- [x] `crop()` implementieren (render-based) ✅
 
 ---
 
