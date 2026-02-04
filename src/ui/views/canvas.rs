@@ -8,7 +8,7 @@ use cosmic::iced::{ContentFit, Length};
 use cosmic::widget::{container, text};
 use cosmic::Element;
 
-use super::image_viewer::Viewer;
+use crate::ui::widgets::Viewer;
 use crate::ui::model::{ToolMode, ViewMode};
 use crate::ui::{AppMessage, AppModel};
 use crate::application::DocumentManager;
