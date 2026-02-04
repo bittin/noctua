@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // src/ui/widgets/crop_overlay.rs
 //
-// Simple crop overlay - draws directly on canvas coordinates.
+// Simple crop overlay.
 
 use cosmic::{
     Element, Renderer,
@@ -21,7 +21,6 @@ use cosmic::{
 use crate::ui::widgets::crop_model::{CropSelection, DragHandle};
 use crate::ui::AppMessage;
 
-// Visual constants
 const HANDLE_SIZE: f32 = 12.0;
 const HANDLE_HIT_SIZE: f32 = 24.0;
 const OVERLAY_COLOR: Color = Color::from_rgba(0.0, 0.0, 0.0, 0.5);
@@ -29,10 +28,6 @@ const HANDLE_COLOR: Color = Color::WHITE;
 const BORDER_COLOR: Color = Color::WHITE;
 const BORDER_WIDTH: f32 = 2.0;
 
-/// Crop overlay widget.
-/// 
-/// Simple: Draws at exact mouse coordinates. No coordinate transformation!
-/// selection.region is in canvas pixel coordinates, we draw at those exact pixels.
 pub struct CropOverlay {
     selection: CropSelection,
     show_grid: bool,
@@ -48,13 +43,11 @@ impl CropOverlay {
         }
     }
 
-    /// Hit test for handles - direct coordinate comparison.
     fn hit_test_handle(&self, point: Point) -> DragHandle {
         let Some((x, y, w, h)) = self.selection.region else {
             return DragHandle::None;
         };
 
-        // 8 handle positions
         let handles = [
             (Point::new(x, y), DragHandle::TopLeft),
             (Point::new(x + w, y), DragHandle::TopRight),
@@ -66,14 +59,12 @@ impl CropOverlay {
             (Point::new(x + w, y + h / 2.0), DragHandle::Right),
         ];
 
-        // Check handles
         for (pos, handle) in handles {
             if point_in_handle(point, pos) {
                 return handle;
             }
         }
 
-        // Check if inside selection (move)
         if point.x >= x && point.x <= x + w && point.y >= y && point.y <= y + h {
             return DragHandle::Move;
         }
@@ -81,77 +72,80 @@ impl CropOverlay {
         DragHandle::None
     }
 
-    /// Draw darkened overlay outside selection.
     fn draw_overlay(&self, renderer: &mut Renderer, bounds: Rectangle) {
         let Some((x, y, w, h)) = self.selection.region else {
-            // No selection - darken everything
             draw_quad(renderer, bounds, OVERLAY_COLOR);
             return;
         };
 
-        // Selection rectangle
-        let sel_right = x + w;
-        let sel_bottom = y + h;
+        // Convert relative coords to absolute screen coords
+        let abs_x = bounds.x + x;
+        let abs_y = bounds.y + y;
+        let abs_right = abs_x + w;
+        let abs_bottom = abs_y + h;
 
-        // Top overlay
-        if y > bounds.y {
+        // Top
+        if abs_y > bounds.y {
             draw_quad(
                 renderer,
                 Rectangle::new(
                     Point::new(bounds.x, bounds.y),
-                    Size::new(bounds.width, y - bounds.y),
+                    Size::new(bounds.width, abs_y - bounds.y),
                 ),
                 OVERLAY_COLOR,
             );
         }
 
-        // Bottom overlay
-        if sel_bottom < bounds.y + bounds.height {
+        // Bottom
+        if abs_bottom < bounds.y + bounds.height {
             draw_quad(
                 renderer,
                 Rectangle::new(
-                    Point::new(bounds.x, sel_bottom),
-                    Size::new(bounds.width, bounds.y + bounds.height - sel_bottom),
+                    Point::new(bounds.x, abs_bottom),
+                    Size::new(bounds.width, bounds.y + bounds.height - abs_bottom),
                 ),
                 OVERLAY_COLOR,
             );
         }
 
-        // Left overlay
-        if x > bounds.x {
+        // Left
+        if abs_x > bounds.x {
             draw_quad(
                 renderer,
                 Rectangle::new(
-                    Point::new(bounds.x, y),
-                    Size::new(x - bounds.x, h),
+                    Point::new(bounds.x, abs_y),
+                    Size::new(abs_x - bounds.x, h),
                 ),
                 OVERLAY_COLOR,
             );
         }
 
-        // Right overlay
-        if sel_right < bounds.x + bounds.width {
+        // Right
+        if abs_right < bounds.x + bounds.width {
             draw_quad(
                 renderer,
                 Rectangle::new(
-                    Point::new(sel_right, y),
-                    Size::new(bounds.x + bounds.width - sel_right, h),
+                    Point::new(abs_right, abs_y),
+                    Size::new(bounds.x + bounds.width - abs_right, h),
                 ),
                 OVERLAY_COLOR,
             );
         }
     }
 
-    /// Draw border.
-    fn draw_border(&self, renderer: &mut Renderer) {
+    fn draw_border(&self, renderer: &mut Renderer, bounds: Rectangle) {
         let Some((x, y, w, h)) = self.selection.region else {
             return;
         };
 
+        // Add bounds offset
+        let abs_x = bounds.x + x;
+        let abs_y = bounds.y + y;
+
         // Top
         draw_quad(
             renderer,
-            Rectangle::new(Point::new(x, y), Size::new(w, BORDER_WIDTH)),
+            Rectangle::new(Point::new(abs_x, abs_y), Size::new(w, BORDER_WIDTH)),
             BORDER_COLOR,
         );
 
@@ -159,7 +153,7 @@ impl CropOverlay {
         draw_quad(
             renderer,
             Rectangle::new(
-                Point::new(x, y + h - BORDER_WIDTH),
+                Point::new(abs_x, abs_y + h - BORDER_WIDTH),
                 Size::new(w, BORDER_WIDTH),
             ),
             BORDER_COLOR,
@@ -168,7 +162,7 @@ impl CropOverlay {
         // Left
         draw_quad(
             renderer,
-            Rectangle::new(Point::new(x, y), Size::new(BORDER_WIDTH, h)),
+            Rectangle::new(Point::new(abs_x, abs_y), Size::new(BORDER_WIDTH, h)),
             BORDER_COLOR,
         );
 
@@ -176,31 +170,33 @@ impl CropOverlay {
         draw_quad(
             renderer,
             Rectangle::new(
-                Point::new(x + w - BORDER_WIDTH, y),
+                Point::new(abs_x + w - BORDER_WIDTH, abs_y),
                 Size::new(BORDER_WIDTH, h),
             ),
             BORDER_COLOR,
         );
     }
 
-    /// Draw handles.
-    fn draw_handles(&self, renderer: &mut Renderer) {
+    fn draw_handles(&self, renderer: &mut Renderer, bounds: Rectangle) {
         let Some((x, y, w, h)) = self.selection.region else {
             return;
         };
 
         let half = HANDLE_SIZE / 2.0;
 
-        // 8 handle positions
+        // Add bounds offset
+        let abs_x = bounds.x + x;
+        let abs_y = bounds.y + y;
+
         let handles = [
-            Point::new(x, y),
-            Point::new(x + w, y),
-            Point::new(x, y + h),
-            Point::new(x + w, y + h),
-            Point::new(x + w / 2.0, y),
-            Point::new(x + w / 2.0, y + h),
-            Point::new(x, y + h / 2.0),
-            Point::new(x + w, y + h / 2.0),
+            Point::new(abs_x, abs_y),
+            Point::new(abs_x + w, abs_y),
+            Point::new(abs_x, abs_y + h),
+            Point::new(abs_x + w, abs_y + h),
+            Point::new(abs_x + w / 2.0, abs_y),
+            Point::new(abs_x + w / 2.0, abs_y + h),
+            Point::new(abs_x, abs_y + h / 2.0),
+            Point::new(abs_x + w, abs_y + h / 2.0),
         ];
 
         for pos in handles {
@@ -215,8 +211,7 @@ impl CropOverlay {
         }
     }
 
-    /// Draw grid.
-    fn draw_grid(&self, renderer: &mut Renderer) {
+    fn draw_grid(&self, renderer: &mut Renderer, bounds: Rectangle) {
         if !self.show_grid {
             return;
         }
@@ -229,26 +224,30 @@ impl CropOverlay {
             return;
         }
 
+        // Add bounds offset
+        let abs_x = bounds.x + x;
+        let abs_y = bounds.y + y;
+
         let grid_color = Color::from_rgba(1.0, 1.0, 1.0, 0.3);
         let third_w = w / 3.0;
         let third_h = h / 3.0;
 
-        // 2 vertical lines
+        // 2 vertical
         for i in 1..3 {
-            let line_x = x + third_w * i as f32;
+            let line_x = abs_x + third_w * i as f32;
             draw_quad(
                 renderer,
-                Rectangle::new(Point::new(line_x, y), Size::new(1.0, h)),
+                Rectangle::new(Point::new(line_x, abs_y), Size::new(1.0, h)),
                 grid_color,
             );
         }
 
-        // 2 horizontal lines
+        // 2 horizontal
         for i in 1..3 {
-            let line_y = y + third_h * i as f32;
+            let line_y = abs_y + third_h * i as f32;
             draw_quad(
                 renderer,
-                Rectangle::new(Point::new(x, line_y), Size::new(w, 1.0)),
+                Rectangle::new(Point::new(abs_x, line_y), Size::new(w, 1.0)),
                 grid_color,
             );
         }
@@ -277,9 +276,9 @@ impl Widget<AppMessage, cosmic::Theme, Renderer> for CropOverlay {
         let bounds = layout.bounds();
 
         self.draw_overlay(renderer, bounds);
-        self.draw_border(renderer);
-        self.draw_handles(renderer);
-        self.draw_grid(renderer);
+        self.draw_border(renderer, bounds);
+        self.draw_handles(renderer, bounds);
+        self.draw_grid(renderer, bounds);
     }
 
     fn on_event(
@@ -300,13 +299,11 @@ impl Widget<AppMessage, cosmic::Theme, Renderer> for CropOverlay {
                 if let Some(pos) = cursor.position_in(bounds) {
                     let handle = self.hit_test_handle(pos);
 
-                    // Check for double-click on Move handle
                     if handle == DragHandle::Move {
                         use std::time::{Duration, Instant};
                         let now = Instant::now();
                         if let Some(last) = self.last_click {
                             if now.duration_since(last) < Duration::from_millis(400) {
-                                // Double-click - apply crop
                                 shell.publish(AppMessage::ApplyCrop);
                                 self.last_click = None;
                                 return Status::Captured;
@@ -384,7 +381,6 @@ impl<'a> From<CropOverlay> for Element<'a, AppMessage> {
     }
 }
 
-/// Helper: Check if point is within handle hit area.
 fn point_in_handle(point: Point, handle_center: Point) -> bool {
     let half = HANDLE_HIT_SIZE / 2.0;
     point.x >= handle_center.x - half
@@ -393,7 +389,6 @@ fn point_in_handle(point: Point, handle_center: Point) -> bool {
         && point.y <= handle_center.y + half
 }
 
-/// Helper: Draw quad.
 fn draw_quad(renderer: &mut Renderer, bounds: Rectangle, color: Color) {
     renderer.fill_quad(
         Quad {
@@ -404,7 +399,6 @@ fn draw_quad(renderer: &mut Renderer, bounds: Rectangle, color: Color) {
     );
 }
 
-/// Public constructor.
 pub fn crop_overlay<'a>(selection: &CropSelection, show_grid: bool) -> Element<'a, AppMessage> {
     CropOverlay::new(selection, show_grid).into()
 }
