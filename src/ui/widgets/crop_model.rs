@@ -1,18 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// src/ui/widgets/crop_types.rs
+// src/ui/widgets/crop_model.rs
 //
-// Simple crop types (based on Cupola, simplified from our complex implementation).
+// Crop UI model (drag state and logic).
 
-/// Crop region in pixel coordinates.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct CropRegion {
-    pub x: u32,
-    pub y: u32,
-    pub width: u32,
-    pub height: u32,
-}
+use crate::domain::document::operations::CropRegion;
 
-/// Drag handle for crop selection (simple enum, no Direction struct).
+/// Drag handle for crop selection.
+/// 
+/// Identifies which part of the selection is being dragged.
+/// Pure UI concern - not part of domain.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DragHandle {
     #[default]
@@ -28,14 +24,29 @@ pub enum DragHandle {
     Move,
 }
 
-/// Crop selection state (uses simple tuples instead of complex structs).
+/// Crop selection UI model.
+/// 
+/// Manages the interactive state of crop selection:
+/// - Current selection region (in screen/canvas coordinates)
+/// - Drag state (what's being dragged, where it started)
+/// - Drag logic (how to update region based on handle type)
+/// 
+/// This is UI-specific logic, not domain logic!
 #[derive(Debug, Clone, Default)]
 pub struct CropSelection {
-    /// Region as (x, y, width, height) in image coordinates
+    /// Current selection region as (x, y, width, height) in screen coordinates
     pub region: Option<(f32, f32, f32, f32)>,
+    
+    /// Is user currently dragging?
     pub is_dragging: bool,
+    
+    /// Which handle/part is being dragged?
     pub drag_handle: DragHandle,
+    
+    /// Where did the drag start? (for delta calculation)
     drag_start: Option<(f32, f32)>,
+    
+    /// What was the region when drag started? (for resize calculation)
     drag_start_region: Option<(f32, f32, f32, f32)>,
 }
 
@@ -44,6 +55,7 @@ impl CropSelection {
         Self::default()
     }
 
+    /// Start a new selection (user clicks on empty area).
     pub fn start_new_selection(&mut self, x: f32, y: f32) {
         self.region = Some((x, y, 0.0, 0.0));
         self.is_dragging = true;
@@ -52,6 +64,7 @@ impl CropSelection {
         self.drag_start_region = None;
     }
 
+    /// Start dragging a handle (user clicks on existing selection).
     pub fn start_handle_drag(&mut self, handle: DragHandle, x: f32, y: f32) {
         self.is_dragging = true;
         self.drag_handle = handle;
@@ -59,6 +72,7 @@ impl CropSelection {
         self.drag_start_region = self.region;
     }
 
+    /// Update selection during drag.
     pub fn update_drag(&mut self, x: f32, y: f32, img_width: f32, img_height: f32) {
         if !self.is_dragging {
             return;
@@ -66,7 +80,7 @@ impl CropSelection {
 
         match self.drag_handle {
             DragHandle::None => {
-                // Creating new selection
+                // Creating new selection - expand from start point
                 if let Some((start_x, start_y)) = self.drag_start {
                     let min_x = start_x.min(x).max(0.0);
                     let min_y = start_y.min(y).max(0.0);
@@ -99,6 +113,7 @@ impl CropSelection {
         }
     }
 
+    /// Resize region based on which handle is being dragged.
     fn resize_region(
         &self,
         rx: f32,
@@ -158,12 +173,26 @@ impl CropSelection {
         }
     }
 
+    /// End drag operation.
     pub fn end_drag(&mut self) {
         self.is_dragging = false;
         self.drag_start = None;
         self.drag_start_region = None;
     }
 
+    /// Reset selection (cancel).
+    pub fn reset(&mut self) {
+        *self = Self::default();
+    }
+
+    /// Check if there's a valid selection.
+    pub fn has_selection(&self) -> bool {
+        self.region
+            .map(|(_, _, w, h)| w > 1.0 && h > 1.0)
+            .unwrap_or(false)
+    }
+
+    /// Convert to domain CropRegion for actual crop operation.
     pub fn to_crop_region(&self) -> Option<CropRegion> {
         self.region.and_then(|(x, y, w, h)| {
             if w > 1.0 && h > 1.0 {
@@ -177,25 +206,5 @@ impl CropSelection {
                 None
             }
         })
-    }
-
-    pub fn reset(&mut self) {
-        *self = Self::default();
-    }
-
-    pub fn has_selection(&self) -> bool {
-        self.region
-            .map(|(_, _, w, h)| w > 1.0 && h > 1.0)
-            .unwrap_or(false)
-    }
-}
-
-impl CropRegion {
-    pub fn new(x: u32, y: u32, width: u32, height: u32) -> Self {
-        Self { x, y, width, height }
-    }
-
-    pub fn as_tuple(&self) -> (u32, u32, u32, u32) {
-        (self.x, self.y, self.width, self.height)
     }
 }

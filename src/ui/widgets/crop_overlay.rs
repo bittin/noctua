@@ -18,7 +18,7 @@ use cosmic::{
     },
 };
 
-use crate::ui::widgets::{CropSelection, DragHandle};
+use crate::ui::widgets::crop_model::{CropSelection, DragHandle};
 use crate::ui::AppMessage;
 
 // Visual constants

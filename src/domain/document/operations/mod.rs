@@ -3,9 +3,13 @@
 //
 // Document operations: transformations, rendering, and export.
 
+pub mod crop;
 pub mod export;
 pub mod render;
 pub mod transform;
+
+// Re-export CropRegion for convenience
+pub use crop::CropRegion;
 
 // Note: Low-level pixel operations (apply_rotation, apply_flip, crop_image)
 // are internal helpers (pub(crate)) used only by document type implementations.

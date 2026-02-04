@@ -8,7 +8,7 @@ use cosmic::iced::{ContentFit, Size, Vector};
 use crate::application::DocumentManager;
 use crate::domain::document::core::content::DocumentKind;
 use crate::domain::document::core::document::DocResult;
-use crate::ui::widgets::CropRegion;
+use crate::domain::document::operations::CropRegion;
 
 /// Crop document command.
 ///
