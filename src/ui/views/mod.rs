@@ -4,10 +4,10 @@
 // View module exports.
 
 pub mod canvas;
-pub mod crop_dialog;
 pub mod footer;
 pub mod format_panel;
 pub mod header;
+pub mod image_viewer;
 pub mod pages_panel;
 pub mod panels;
 
@@ -26,15 +26,7 @@ pub fn view<'a>(
     manager: &'a DocumentManager,
     config: &'a AppConfig,
 ) -> Element<'a, AppMessage> {
-    let canvas = canvas::view(model, manager, config);
-
-    // Overlay crop dialog if in crop mode
-    if let Some(crop_dialog) = crop_dialog::view(model) {
-        // Use stack to overlay dialog on top of canvas
-        cosmic::iced_widget::stack![canvas, crop_dialog].into()
-    } else {
-        canvas
-    }
+    canvas::view(model, manager, config)
 }
 
 /// Navigation bar content (left panel).

@@ -52,7 +52,7 @@ pub fn sync_model_from_manager(model: &mut AppModel, manager: &mut DocumentManag
 pub fn sync_render_data(model: &mut AppModel, manager: &mut DocumentManager) {
     if let Some(doc) = manager.current_document_mut() {
         // Re-render at current scale to get updated image handle
-        if let Ok(render_output) = doc.render(1.0) {
+        if let Ok(render_output) = doc.render(model.scale as f64) {
             model.current_image_handle = Some(render_output.handle);
         }
 

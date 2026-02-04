@@ -28,6 +28,13 @@ pub enum AppMessage {
     ZoomOut,
     ZoomReset,
     ZoomFit,
+    ViewerStateChanged {
+        scale: f32,
+        offset_x: f32,
+        offset_y: f32,
+        canvas_size: cosmic::iced::Size,
+        image_size: cosmic::iced::Size,
+    },
 
     // Pan control.
     PanLeft,
@@ -52,6 +59,8 @@ pub enum AppMessage {
     CropDragMove {
         x: f32,
         y: f32,
+        max_x: f32,
+        max_y: f32,
     },
     CropDragEnd,
 
