@@ -112,6 +112,7 @@ pub struct AppModel {
     pub scale: f32,
     pub canvas_size: Size,
     pub image_size: Size,
+    pub scroll_id: cosmic::widget::Id,
 
     // Tool state
     pub tool_mode: ToolMode,
@@ -150,6 +151,7 @@ impl AppModel {
             scale: 1.0,
             canvas_size: Size::ZERO,
             image_size: Size::ZERO,
+            scroll_id: cosmic::widget::Id::new("canvas-scroll"),
             // Tool state
             tool_mode: ToolMode::None,
             crop_selection: CropSelection::default(),
