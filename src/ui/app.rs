@@ -4,7 +4,7 @@
 // COSMIC application wiring and main app struct.
 
 use super::message::AppMessage;
-use super::model::AppModel;
+use super::model::{AppModel, ViewMode};
 use super::update;
 use crate::ui::views;
 
@@ -73,8 +73,6 @@ impl cosmic::Application for NoctuaApp {
                 Err(_) => (AppConfig::default(), None),
             };
 
-        let mut model = AppModel::new(config.clone());
-
         let Flags::Args(args) = flags;
 
         // Determine initial path: CLI argument takes priority.
@@ -90,10 +88,31 @@ impl cosmic::Application for NoctuaApp {
         // Initialize document manager
         let mut document_manager = DocumentManager::new();
 
+        // Initialize model
+        let mut model = AppModel::new(config.clone());
+
         // Load initial document if provided
         if let Some(path) = initial_path {
             if let Err(e) = document_manager.open_document(&path) {
                 log::error!("Failed to open initial path {}: {}", path.display(), e);
+            } else {
+                // Set initial view mode to Fit
+                model.viewport.fit_mode = ViewMode::Fit;
+                model.viewport.scale = 1.0;
+                model.reset_pan();
+
+                // Cache initial render so image is displayed immediately
+                if let Some(doc) = document_manager.current_document_mut() {
+                    use crate::domain::document::core::document::Renderable;
+                    match doc.render(model.viewport.scale as f64) {
+                        Ok(output) => {
+                            model.viewport.cached_image_handle = Some(output.handle);
+                        }
+                        Err(e) => {
+                            log::error!("Failed to render initial document: {}", e);
+                        }
+                    }
+                }
             }
         }
 

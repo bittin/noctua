@@ -48,7 +48,7 @@ pub fn update(app: &mut NoctuaApp, msg: &AppMessage) -> UpdateResult {
             {
                 // Reset zoom when navigating to new document
                 app.model.viewport.scale = 1.0;
-                app.model.viewport.fit_mode = ViewMode::ActualSize;
+                app.model.viewport.fit_mode = ViewMode::Fit;
                 app.model.reset_pan();
                 cache_render(&mut app.model, &mut app.document_manager);
             }
@@ -61,7 +61,7 @@ pub fn update(app: &mut NoctuaApp, msg: &AppMessage) -> UpdateResult {
             {
                 // Reset zoom when navigating to new document
                 app.model.viewport.scale = 1.0;
-                app.model.viewport.fit_mode = ViewMode::ActualSize;
+                app.model.viewport.fit_mode = ViewMode::Fit;
                 app.model.reset_pan();
                 cache_render(&mut app.model, &mut app.document_manager);
             }

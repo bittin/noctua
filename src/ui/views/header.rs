@@ -25,23 +25,23 @@ pub fn start<'a>(
         .spacing(4)
         .push(
             button::icon(icon::from_name("view-sidebar-start-symbolic"))
-                .on_press(AppMessage::ToggleNavBar)
-                .tooltip(fl!("tooltip-nav-toggle")),
+                .on_press(AppMessage::ToggleNavBar),
+            //.tooltip(fl!("tooltip-nav-toggle")),
         )
-        .push(
-            button::icon(icon::from_name("open-menu-symbolic"))
-                .on_press(AppMessage::ToggleMainMenu)
-                .tooltip(fl!("menu-main")),
-        )
+        // .push(
+        //     button::icon(icon::from_name("open-menu-symbolic"))
+        //         .on_press(AppMessage::ToggleMainMenu),
+        //     //.tooltip(fl!("menu-main")),
+        // )
         .push(
             button::icon(icon::from_name("go-previous-symbolic"))
-                .on_press_maybe(has_doc.then_some(AppMessage::PrevDocument))
-                .tooltip(fl!("tooltip-nav-previous")),
+                .on_press_maybe(has_doc.then_some(AppMessage::PrevDocument)),
+            //.tooltip(fl!("tooltip-nav-previous")),
         )
         .push(
             button::icon(icon::from_name("go-next-symbolic"))
-                .on_press_maybe(has_doc.then_some(AppMessage::NextDocument))
-                .tooltip(fl!("tooltip-nav-next")),
+                .on_press_maybe(has_doc.then_some(AppMessage::NextDocument)),
+            //.tooltip(fl!("tooltip-nav-next")),
         );
 
     // Center section: Transformations
@@ -49,24 +49,24 @@ pub fn start<'a>(
         .spacing(4)
         .push(
             button::icon(icon::from_name("object-rotate-left-symbolic"))
-                .on_press_maybe(has_doc.then_some(AppMessage::RotateCCW))
-                .tooltip(fl!("tooltip-rotate-ccw")),
+                .on_press_maybe(has_doc.then_some(AppMessage::RotateCCW)),
+            //.tooltip(fl!("tooltip-rotate-ccw")),
         )
         .push(
             button::icon(icon::from_name("object-rotate-right-symbolic"))
-                .on_press_maybe(has_doc.then_some(AppMessage::RotateCW))
-                .tooltip(fl!("tooltip-rotate-cw")),
+                .on_press_maybe(has_doc.then_some(AppMessage::RotateCW)),
+            //.tooltip(fl!("tooltip-rotate-cw")),
         )
         .push(horizontal_space().width(Length::Fixed(12.0)))
         .push(
             button::icon(icon::from_name("object-flip-horizontal-symbolic"))
-                .on_press_maybe(has_doc.then_some(AppMessage::FlipHorizontal))
-                .tooltip(fl!("tooltip-flip-horizontal")),
+                .on_press_maybe(has_doc.then_some(AppMessage::FlipHorizontal)),
+            //.tooltip(fl!("tooltip-flip-horizontal")),
         )
         .push(
             button::icon(icon::from_name("object-flip-vertical-symbolic"))
-                .on_press_maybe(has_doc.then_some(AppMessage::FlipVertical))
-                .tooltip(fl!("tooltip-flip-vertical")),
+                .on_press_maybe(has_doc.then_some(AppMessage::FlipVertical)),
+            //.tooltip(fl!("tooltip-flip-vertical")),
         );
 
     vec![
@@ -85,7 +85,7 @@ pub fn end<'a>(
         // Info panel toggle
         button::icon(icon::from_name("dialog-information-symbolic"))
             .on_press(AppMessage::ToggleContextPage(ContextPage::Properties))
-            .tooltip(fl!("tooltip-info-panel"))
+            //.tooltip(fl!("tooltip-info-panel"))
             .into(),
     ]
 }
