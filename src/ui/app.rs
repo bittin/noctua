@@ -121,7 +121,20 @@ impl cosmic::Application for NoctuaApp {
 
         // Apply persisted panel states.
         core.window.show_context = config.context_drawer_visible;
-        core.nav_bar_set_toggled(config.nav_bar_visible);
+
+        // Auto-open nav bar for multi-page documents
+        let should_show_nav = if let Some(doc) = document_manager.current_document() {
+            doc.is_multi_page()
+        } else {
+            false
+        };
+
+        if should_show_nav {
+            core.nav_bar_set_toggled(true);
+            model.panels.left = Some(crate::ui::model::LeftPanel::Thumbnails);
+        } else {
+            core.nav_bar_set_toggled(config.nav_bar_visible);
+        }
 
         // Start thumbnail generation for initial document if applicable.
         let init_task = start_thumbnail_generation(&model);
@@ -259,6 +272,23 @@ impl NoctuaApp {
     fn save_config(&self) {
         if let Some(ref handler) = self.config_handler {
             let _ = self.config.write_entry(handler);
+        }
+    }
+
+    /// Update nav bar visibility based on current document type.
+    pub fn update_nav_bar_for_document(&mut self) {
+        use crate::ui::model::LeftPanel;
+
+        if let Some(doc) = self.document_manager.current_document() {
+            if doc.is_multi_page() {
+                // Multi-page document: open nav bar and show thumbnails
+                self.core.nav_bar_set_toggled(true);
+                self.model.panels.left = Some(LeftPanel::Thumbnails);
+            } else {
+                // Single-page document: close nav bar
+                self.core.nav_bar_set_toggled(false);
+                self.model.panels.left = None;
+            }
         }
     }
 }

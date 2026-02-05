@@ -38,6 +38,9 @@ pub fn update(app: &mut NoctuaApp, msg: &AppMessage) -> UpdateResult {
                 app.model.viewport.fit_mode = ViewMode::Fit;
                 app.model.viewport.scale = 1.0;
                 cache_render(&mut app.model, &mut app.document_manager);
+
+                // Auto-toggle nav bar for multi-page documents
+                app.update_nav_bar_for_document();
             }
         }
 
@@ -51,6 +54,9 @@ pub fn update(app: &mut NoctuaApp, msg: &AppMessage) -> UpdateResult {
                 app.model.viewport.fit_mode = ViewMode::Fit;
                 app.model.reset_pan();
                 cache_render(&mut app.model, &mut app.document_manager);
+
+                // Auto-toggle nav bar for multi-page documents
+                app.update_nav_bar_for_document();
             }
         }
 
@@ -64,6 +70,9 @@ pub fn update(app: &mut NoctuaApp, msg: &AppMessage) -> UpdateResult {
                 app.model.viewport.fit_mode = ViewMode::Fit;
                 app.model.reset_pan();
                 cache_render(&mut app.model, &mut app.document_manager);
+
+                // Auto-toggle nav bar for multi-page documents
+                app.update_nav_bar_for_document();
             }
         }
 
