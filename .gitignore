@@ -1,7 +1,6 @@
 .cargo/
 *.pdb
 **/*.rs.bk
-DEVNOTE.md
 tmp/
 debug/
 target/
